@@ -1,0 +1,671 @@
+---
+title: Troubleshooting
+description: Common issues, error messages, and solutions when running GitHub Achievement CLI
+---
+
+This guide covers common problems you might encounter and how to solve them.
+
+## Authentication Errors
+
+### Bad Credentials
+
+**Error Message**:
+```
+AuthenticationError: GitHub authentication failed
+Check your GITHUB_TOKEN in .env file.
+```
+
+**Cause**: Your GitHub token is invalid, expired, or incorrect.
+
+**Solution**:
+
+<Steps>
+  <Step title="Generate a new token">
+    1. Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+    2. Click **Generate new token** → **Generate new token (classic)**
+    3. Select the `repo` scope (full control of private repositories)
+    4. Copy the token immediately
+  </Step>
+
+  <Step title="Update your .env file">
+    Open `.env` in your project root:
+    
+    ```env
+    GITHUB_TOKEN=ghp_your_new_token_here
+    ```
+  </Step>
+
+  <Step title="Restart the CLI">
+    ```bash
+    npm start
+    ```
+  </Step>
+</Steps>
+
+### Insufficient Permissions
+
+**Error Message**:
+```
+InsufficientPermissionsError: Cannot write on your-username/your-repo
+Your token needs additional permissions.
+```
+
+**Cause**: Your token doesn't have the required scopes.
+
+**Solution**:
+
+1. **Check token scopes**: Go to [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+2. **Required scopes**:
+   - ✅ `repo` - Full control of private repositories
+   - ✅ `write:discussion` - For Galaxy Brain (if using)
+3. **Regenerate** the token if scopes are missing
+4. **Update** `.env` with the new token
+
+<Warning>
+  You cannot add scopes to an existing token. You must generate a new token with the correct scopes.
+</Warning>
+
+### Resource Not Accessible
+
+**Error Message**:
+```
+GitHubAPIError (403): Resource not accessible by integration
+```
+
+**Cause**: The token doesn't have access to the repository or resource.
+
+**Common Scenarios**:
+
+<Accordion title="Private Repository">
+  If your target repository is private:
+  
+  1. Ensure your token has the `repo` scope (not just `public_repo`)
+  2. Verify you own the repository or have write access
+  3. If using a helper account, add it as a collaborator
+</Accordion>
+
+<Accordion title="Organization Repository">
+  If the repository belongs to an organization:
+  
+  1. Check if the organization requires SSO authorization
+  2. Go to [Settings > Personal access tokens](https://github.com/settings/tokens)
+  3. Find your token and click **Configure SSO**
+  4. Authorize it for the organization
+</Accordion>
+
+<Accordion title="Discussions Not Enabled">
+  For Galaxy Brain:
+  
+  1. Go to repository Settings > Features
+  2. Enable ✅ **Discussions**
+  3. Wait a moment for the feature to activate
+</Accordion>
+
+## Rate Limit Errors
+
+### Rate Limit Exceeded
+
+**Error Message**:
+```
+RateLimitError: GitHub API rate limit exceeded. Resets in 45 minutes.
+```
+
+**Cause**: You've exceeded GitHub's API rate limits.
+
+**GitHub's Limits**:
+- **Authenticated requests**: 5,000 per hour
+- **Content-creating requests**: 80 per minute
+- **Secondary rate limits**: 2 concurrent requests (for writes)
+
+**What the CLI Does**:
+
+The CLI automatically rate limits itself to stay under GitHub's limits:
+
+```
+Max concurrent operations: 2
+Operations per minute: 15 (× 5 API calls = 75, under 80 limit)
+```
+
+From `src/utils/rateLimiter.ts:9-20`:
+```typescript
+// Each operation makes ~5 API calls (branch, commit, PR, merge, delete)
+// GitHub's limit is 80 content-creating requests/minute
+// We limit to 15 operations/minute (75 API calls) to stay safe
+const DEFAULT_CONFIG: RateLimiterConfig = {
+  maxPerMinute: 15,
+  maxConcurrent: 2,
+  backoffBaseMs: 1000,
+};
+```
+
+**Solutions**:
+
+<Steps>
+  <Step title="Wait for reset">
+    The easiest solution is to wait. GitHub rate limits reset every hour (or every minute for secondary limits).
+    
+    The CLI will tell you how long to wait:
+    ```
+    Wait 45 minutes before retrying
+    ```
+  </Step>
+
+  <Step title="Reduce concurrency">
+    If you're hitting secondary rate limits, reduce concurrent operations in your config (if you've customized it).
+  </Step>
+
+  <Step title="Resume later">
+    Press Ctrl+C to stop. Your progress is saved. Resume after the rate limit resets:
+    
+    ```bash
+    npm start
+    # Select "Run Achievements" and choose the same achievement
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  The CLI automatically retries with exponential backoff when it hits rate limits. You usually don't need to do anything.
+</Tip>
+
+### Secondary Rate Limit
+
+**Error Message**:
+```
+You have exceeded a secondary rate limit
+```
+
+**Cause**: GitHub detected too many concurrent write operations.
+
+**Solution**:
+
+The CLI already limits concurrent operations to 2, but if you still hit this:
+
+1. **Wait 1 minute** - Secondary rate limits reset quickly
+2. **The CLI will retry automatically** with exponential backoff
+3. **Don't restart** - Let it handle the retry
+
+From `src/utils/rateLimiter.ts:138-148`:
+```typescript
+handleRateLimitError(retryAfter?: number, attempt: number = 1): number {
+  if (retryAfter) {
+    return retryAfter * 1000;
+  }
+  
+  // Exponential backoff with jitter
+  const baseDelay = this.config.backoffBaseMs;
+  const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+  const jitter = Math.random() * 1000;
+  return Math.min(exponentialDelay + jitter, 60000); // Cap at 60 seconds
+}
+```
+
+## Repository Errors
+
+### Repository Not Found
+
+**Error Message**:
+```
+RepositoryNotFoundError: Repository not found: your-username/your-repo
+```
+
+**Cause**: The repository doesn't exist or your token can't access it.
+
+**Solutions**:
+
+<Steps>
+  <Step title="Verify the repository exists">
+    Go to `https://github.com/your-username/your-repo` in your browser. Does it load?
+  </Step>
+
+  <Step title="Check the repository name format">
+    It must be in the format `owner/repo`:
+    
+    ✅ Correct: `alice/test-achievements`  
+    ❌ Wrong: `test-achievements`  
+    ❌ Wrong: `alice/test-achievements.git`
+  </Step>
+
+  <Step title="Update .env if needed">
+    ```env
+    TARGET_REPO=your-username/your-repo
+    ```
+  </Step>
+
+  <Step title="Check token access">
+    If the repo is private, ensure your token has the `repo` scope (not just `public_repo`).
+  </Step>
+</Steps>
+
+### No Write Access
+
+**Error Message**:
+```
+NoWriteAccessError: No write access to repository: your-username/your-repo
+```
+
+**Cause**: You don't have push permission to the repository.
+
+**Solutions**:
+
+- **If you own the repo**: Regenerate your token with the `repo` scope
+- **If it's someone else's repo**: You need to be added as a collaborator with write access
+- **Fork the repo**: Create your own fork and use that as the target
+
+### Discussions Not Enabled
+
+**Error Message**:
+```
+DiscussionsNotEnabledError: Discussions are not enabled for repository
+```
+
+**Cause**: Galaxy Brain requires GitHub Discussions, but it's not enabled on your repository.
+
+**Solution**:
+
+<Steps>
+  <Step title="Go to repository settings">
+    Navigate to your target repository on GitHub and click **Settings**.
+  </Step>
+
+  <Step title="Enable Discussions">
+    1. Scroll to the **Features** section
+    2. Check ✅ **Discussions**
+    3. Click **Set up discussions** if prompted
+  </Step>
+
+  <Step title="Wait and retry">
+    Wait 30 seconds for the feature to activate, then try running Galaxy Brain again.
+  </Step>
+</Steps>
+
+## Operation Errors
+
+### Branch Already Exists
+
+**Error Message**:
+```
+BranchExistsError: Branch already exists: pair-extraordinaire-1
+```
+
+**Cause**: A branch with that name already exists, likely from a previous interrupted run.
+
+**Solutions**:
+
+<Steps>
+  <Step title="Delete the branch manually">
+    ```bash
+    cd /path/to/your/repo
+    git push origin --delete pair-extraordinaire-1
+    ```
+  </Step>
+
+  <Step title="Delete all achievement branches">
+    ```bash
+    # List achievement branches
+    git branch -r | grep "origin/pair-extraordinaire\|origin/pull-shark\|origin/galaxy-brain"
+    
+    # Delete them
+    git branch -r | grep "origin/pair-extraordinaire\|origin/pull-shark\|origin/galaxy-brain" | sed 's/origin\///' | xargs -I {} git push origin --delete {}
+    ```
+  </Step>
+
+  <Step title="Retry the operation">
+    The CLI should now be able to create the branch.
+  </Step>
+</Steps>
+
+<Note>
+  Branches are automatically deleted after PRs merge. If you see leftover branches, it means a previous run was interrupted before cleanup completed.
+</Note>
+
+### Merge Conflict
+
+**Error Message**:
+```
+MergeConflictError: Pull request #123 has merge conflicts
+```
+
+**Cause**: The PR branch has conflicts with the base branch.
+
+**Why This Happens**:
+- Rarely occurs during normal operation
+- Usually indicates concurrent operations modified the same files
+- Most common if you manually modified the repository during execution
+
+**Solution**:
+
+The operation will be marked as failed, but other operations continue. The CLI will report the failure at the end:
+
+```
+Results:
+✓ 47 succeeded
+✗ 1 failed
+```
+
+You can:
+1. **Accept the failure** - 47/48 is usually enough for the achievement
+2. **Run again** - The CLI will skip completed operations and retry the failed one
+
+### PR Already Merged
+
+**Error Message**:
+```
+PRAlreadyMergedError: Pull request #123 is already merged
+```
+
+**Cause**: The operation tried to merge a PR that was already merged.
+
+**Solution**: This is usually harmless. The CLI will mark the operation as complete and continue. If you see this:
+
+1. It's likely a resume scenario where the PR was merged but the database wasn't updated
+2. The operation will be counted as successful
+3. No action needed
+
+## Network Errors
+
+### Connection Timeout
+
+**Error Message**:
+```
+NetworkError: Network request failed
+Check your internet connection and try again.
+```
+
+**Causes**:
+- Internet connection issues
+- GitHub API is down
+- Firewall blocking requests
+- Proxy configuration issues
+
+**Solutions**:
+
+<Steps>
+  <Step title="Check internet connection">
+    ```bash
+    ping github.com
+    ```
+    
+    If this fails, your internet is down or GitHub is unreachable.
+  </Step>
+
+  <Step title="Check GitHub status">
+    Visit [githubstatus.com](https://www.githubstatus.com) to see if GitHub is experiencing issues.
+  </Step>
+
+  <Step title="Check proxy settings">
+    If you're behind a corporate proxy:
+    
+    ```bash
+    # Set proxy environment variables
+    export HTTP_PROXY=http://proxy.company.com:8080
+    export HTTPS_PROXY=http://proxy.company.com:8080
+    
+    # Then run the CLI
+    npm start
+    ```
+  </Step>
+
+  <Step title="Retry later">
+    If GitHub is down or your connection is unstable, wait and try again. Your progress is saved.
+  </Step>
+</Steps>
+
+### DNS Resolution Failed
+
+**Error Message**:
+```
+getaddrinfo ENOTFOUND api.github.com
+```
+
+**Cause**: DNS cannot resolve GitHub's domain.
+
+**Solutions**:
+
+1. **Check DNS servers**: Try using Google DNS (8.8.8.8) or Cloudflare DNS (1.1.1.1)
+2. **Flush DNS cache**:
+   ```bash
+   # macOS
+   sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder
+   
+   # Linux
+   sudo systemd-resolve --flush-caches
+   
+   # Windows
+   ipconfig /flushdns
+   ```
+3. **Check /etc/hosts**: Ensure `api.github.com` isn't blocked
+
+## Database Errors
+
+### Database Error During Operation
+
+**Error Message**:
+```
+DatabaseError: Database error during save: EACCES permission denied
+```
+
+**Cause**: The CLI can't read or write the database file.
+
+**Solutions**:
+
+<Steps>
+  <Step title="Check file permissions">
+    ```bash
+    ls -la achievements-data-*.json
+    ```
+    
+    Ensure you have read and write permissions.
+  </Step>
+
+  <Step title="Fix permissions">
+    ```bash
+    chmod 644 achievements-data-*.json
+    ```
+  </Step>
+
+  <Step title="Check disk space">
+    ```bash
+    df -h .
+    ```
+    
+    Ensure you have available disk space.
+  </Step>
+
+  <Step title="Delete and restart (last resort)">
+    If the database is corrupted:
+    
+    ```bash
+    # Back up first
+    cp achievements-data-*.json achievements-data-backup.json
+    
+    # Delete corrupted database
+    rm achievements-data-*.json
+    
+    # Restart CLI (creates new database)
+    npm start
+    ```
+    
+    ⚠️ This will lose progress tracking, but you can re-run achievements.
+  </Step>
+</Steps>
+
+## Configuration Errors
+
+### Missing Configuration
+
+**Error Message**:
+```
+MissingConfigError: Missing required configuration: GITHUB_TOKEN
+```
+
+**Cause**: Required environment variables are not set in `.env`.
+
+**Solution**:
+
+<Steps>
+  <Step title="Check if .env exists">
+    ```bash
+    ls -la .env
+    ```
+    
+    If it doesn't exist, create it:
+    ```bash
+    touch .env
+    ```
+  </Step>
+
+  <Step title="Add required configuration">
+    Open `.env` and add:
+    
+    ```env
+    GITHUB_TOKEN=ghp_your_token_here
+    GITHUB_USERNAME=your-username
+    TARGET_REPO=your-username/your-repo
+    ```
+  </Step>
+
+  <Step title="Restart the CLI">
+    ```bash
+    npm start
+    ```
+  </Step>
+</Steps>
+
+### Configuration Error
+
+**Error Message**:
+```
+ConfigurationError: Configuration error for TARGET_REPO: invalid format
+```
+
+**Cause**: A configuration value is invalid.
+
+**Common Issues**:
+
+| Field | Wrong | Correct |
+|-------|-------|--------|
+| TARGET_REPO | `my-repo` | `username/my-repo` |
+| TARGET_REPO | `github.com/user/repo` | `user/repo` |
+| GITHUB_TOKEN | (missing) | `ghp_xxx...` |
+| GITHUB_USERNAME | (spaces) | `no-spaces-allowed` |
+
+## Stuck Operations
+
+### Operations Stuck in "In Progress"
+
+**Symptom**: Some operations show as "in_progress" in the status view, but nothing is running.
+
+**Cause**: The CLI was interrupted (Ctrl+C or crash) while operations were running.
+
+**Solution**:
+
+This is handled automatically! When you run the achievement again, stuck operations are reset:
+
+From `src/achievements/base.ts:109-113`:
+```typescript
+// Reset any stuck 'in_progress' operations from previous interrupted runs
+const resetCount = resetStuckOperations(this.achievementId);
+if (resetCount > 0) {
+  logger.info(`Reset ${resetCount} stuck operations from previous run`);
+}
+```
+
+Just run the achievement again:
+```bash
+npm start
+# Select "Run Achievements" and choose the same achievement
+```
+
+The CLI will:
+1. Detect stuck operations
+2. Reset them to "pending"
+3. Retry them
+
+## Getting Help
+
+If you encounter an error not covered here:
+
+### 1. Check Error Details
+
+The CLI provides error codes and suggestions:
+
+```
+AuthenticationError: GitHub authentication failed
+Code: AUTH_FAILED
+Suggestion: Check your GITHUB_TOKEN in .env file.
+```
+
+Follow the suggestion first.
+
+### 2. Check Logs
+
+The CLI logs detailed information. Look for error messages and stack traces in the terminal output.
+
+### 3. Common Patterns
+
+<Accordion title="Authentication Issues">
+  - Bad credentials → Regenerate token
+  - Insufficient permissions → Add `repo` scope
+  - Resource not accessible → Check repository access
+</Accordion>
+
+<Accordion title="Rate Limits">
+  - Rate limit exceeded → Wait for reset (shown in error)
+  - Secondary rate limit → Wait 1 minute, retry automatically
+</Accordion>
+
+<Accordion title="Network Issues">
+  - Connection timeout → Check internet connection
+  - DNS failed → Check DNS settings
+  - GitHub down → Wait and retry later
+</Accordion>
+
+<Accordion title="Database Issues">
+  - Permission denied → Fix file permissions
+  - Corrupted → Delete and recreate
+  - Disk full → Free up space
+</Accordion>
+
+### 4. File an Issue
+
+If you've tried everything and still have issues:
+
+1. Go to the [GitHub repository issues page](https://github.com/n0/GitHub-Achievement-CLI/issues)
+2. Search for similar issues
+3. If none found, create a new issue with:
+   - Error message (full text)
+   - Steps to reproduce
+   - Your environment (OS, Node.js version)
+   - CLI output (sanitize tokens!)
+
+<Warning>
+  Never share your GitHub tokens in issues or public forums! Always redact them from logs and screenshots.
+</Warning>
+
+## Prevention Tips
+
+### Best Practices to Avoid Issues
+
+1. **Use a test repository** - Don't use a repository with important code
+2. **Check token scopes** - Ensure `repo` scope is selected when generating tokens
+3. **Verify repository access** - Make sure you own or have write access to the target repo
+4. **Don't interrupt during critical operations** - Let operations complete when possible
+5. **Keep tokens secure** - Never commit `.env` to version control
+6. **Monitor rate limits** - Don't manually trigger operations while the CLI is running
+7. **Use latest version** - Update the CLI regularly: `git pull && npm install`
+
+### Health Check Before Running
+
+Before running achievements, verify:
+
+```bash
+# Check token is set
+grep GITHUB_TOKEN .env
+
+# Check repository exists
+curl -H "Authorization: token $(grep GITHUB_TOKEN .env | cut -d= -f2)" \
+  https://api.github.com/repos/your-username/your-repo
+
+# Should return repository JSON, not 404
+```

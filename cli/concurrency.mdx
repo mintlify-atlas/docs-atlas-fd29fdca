@@ -1,0 +1,333 @@
+---
+title: Concurrency Control
+description: Understanding and configuring concurrent operation execution for optimal performance
+---
+
+## Overview
+
+The GitHub Achievement CLI executes operations concurrently to improve performance while respecting rate limits. Concurrency control determines how many operations can run simultaneously.
+
+## Default Concurrency
+
+The CLI uses conservative defaults to ensure stability:
+
+```typescript
+// From src/utils/rateLimiter.ts:18
+maxConcurrent: 2  // Default: 2 concurrent operations
+```
+
+<Info>
+With 2 concurrent operations, you can process achievements roughly twice as fast while staying well within GitHub's rate limits.
+</Info>
+
+## How Concurrent Execution Works
+
+The CLI uses a worker pool pattern to manage concurrent operations:
+
+### Worker Pool Implementation
+
+From `src/utils/timing.ts:264-301`:
+
+```typescript
+export async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number = 3,
+  onProgress?: (completed: number, total: number) => void
+): Promise<Array<{ success: boolean; result?: T; error?: unknown; index: number }>> {
+  const results = [];
+  let completedCount = 0;
+  let currentIndex = 0;
+
+  const executeNext = async (): Promise<void> => {
+    while (currentIndex < tasks.length) {
+      const index = currentIndex++;
+      const task = tasks[index];
+      
+      try {
+        const result = await task();
+        results.push({ success: true, result, index });
+      } catch (error) {
+        results.push({ success: false, error, index });
+      }
+      
+      completedCount++;
+      if (onProgress) {
+        onProgress(completedCount, tasks.length);
+      }
+    }
+  };
+
+  // Start concurrent workers
+  const workers = Array(Math.min(concurrency, tasks.length))
+    .fill(null)
+    .map(() => executeNext());
+
+  await Promise.all(workers);
+  return results.sort((a, b) => a.index - b.index);
+}
+```
+
+### How It Works
+
+1. **Creates worker pool** with N workers (N = concurrency level)
+2. **Each worker** pulls tasks from the queue and executes them
+3. **Tasks complete independently** - fast tasks don't wait for slow ones
+4. **Results are ordered** by original index, regardless of completion order
+5. **Progress updates** fire after each task completes
+
+<Note>
+The actual concurrency may be lower than the setting if there are fewer tasks than workers. For example, with 3 tasks and concurrency of 5, only 3 workers are created.
+</Note>
+
+## Achievement Execution Flow
+
+From `src/achievements/base.ts:119-182`, here's how concurrency integrates with rate limiting:
+
+```typescript
+const concurrency = this.config.concurrency || 3;
+
+// Create tasks for each pending operation
+const tasks = pendingOps.map((opNum) => async () => {
+  // 1. Acquire rate limit slot (blocks if limit reached)
+  await rateLimiter.acquire();
+  
+  try {
+    // 2. Create operation record in database
+    const operationId = createOperation({ ... });
+    
+    // 3. Execute the actual operation (create PR, merge, etc.)
+    const result = await this.executeOperation(opNum);
+    
+    // 4. Update operation status
+    updateOperation(operationId, { status: 'completed', ... });
+    
+    // 5. Optional delay between operations
+    if (this.config.delayMs > 0) {
+      await delay(this.config.delayMs);
+    }
+    
+    return { success: true, opNum, result };
+  } finally {
+    // 6. Always release the rate limit slot
+    rateLimiter.release();
+  }
+});
+
+// Execute with concurrency control
+const results = await runWithConcurrency(
+  tasks,
+  concurrency,
+  (done, total) => {
+    // Progress callback
+    updateProgress(done, total);
+  }
+);
+```
+
+### Execution Order
+
+<Warning>
+Tasks are **not guaranteed** to complete in order. With concurrency of 2, operation #1 might finish after operation #2. The CLI handles this correctly by tracking each operation independently.
+</Warning>
+
+## Configuration Options
+
+### Environment Variables
+
+You can configure concurrency through your `.env` file:
+
+```bash
+# Concurrency level (default: 2)
+# Note: This is set during initial setup and stored in config
+CONCURRENCY=2
+
+# Batch size for grouping operations (default: 5)
+BATCH_SIZE=5
+```
+
+### BATCH_SIZE vs Concurrency
+
+These are different concepts:
+
+| Setting | Purpose | Example |
+|---------|---------|----------|
+| **Concurrency** | How many operations run *simultaneously* | 2 = two PRs being created at once |
+| **BATCH_SIZE** | How many items to process before reporting progress | 5 = update UI every 5 operations |
+
+<Info>
+`BATCH_SIZE` is primarily used for batch processing and progress reporting, not for controlling parallelism. Use the concurrency setting to control how many operations run at once.
+</Info>
+
+From `.env.example:48-49`:
+
+```bash
+# Batch size for parallel operations (default: 5)
+BATCH_SIZE=5
+```
+
+### Programmatic Configuration
+
+If using the CLI as a library:
+
+```typescript
+import { getRateLimiter } from './utils/rateLimiter.js';
+
+const limiter = getRateLimiter({
+  maxConcurrent: 3,  // Allow 3 concurrent operations
+  maxPerMinute: 15,  // Keep default rate limit
+});
+```
+
+## Impact on Performance
+
+### Speed Comparison
+
+| Concurrency | Operations/Min | Time for 48 Ops | Time for 128 Ops |
+|-------------|---------------|----------------|------------------|
+| 1 | ~15 | ~3.2 minutes | ~8.5 minutes |
+| 2 (default) | ~30 | ~1.6 minutes | ~4.3 minutes |
+| 3 | ~45 | ~1.1 minutes | ~2.9 minutes |
+| 5 | ~75 | ~38 seconds | ~1.7 minutes |
+
+<Warning>
+**Higher concurrency = higher risk of rate limiting.** The default value of 2 is recommended for stability.
+</Warning>
+
+### Performance Factors
+
+1. **Network latency** - Higher latency benefits more from concurrency
+2. **Operation complexity** - Simple operations scale better
+3. **GitHub API response time** - Varies by load and region
+4. **Rate limiting** - Ultimately the bottleneck at high concurrency
+
+### Memory Usage
+
+Each concurrent operation maintains:
+- HTTP connection to GitHub API
+- Operation state in memory
+- Progress tracking data
+- Error handling context
+
+Typical memory per operation: ~1-2 MB
+
+**Total memory** = Base (50-100 MB) + (Concurrency × 2 MB)
+
+Example: Concurrency of 5 uses ~60-110 MB total
+
+## When to Adjust Concurrency
+
+### Increase Concurrency When:
+
+✅ You have a stable, fast internet connection
+✅ You're running small achievements (< 50 operations)
+✅ You're not encountering rate limit errors
+✅ You want faster execution and can monitor for issues
+
+**Recommended:** Concurrency of 3-5
+
+### Decrease Concurrency When:
+
+⚠️ You're seeing frequent rate limit errors (HTTP 429)
+⚠️ You have an unstable internet connection
+⚠️ Running very large achievements (500+ operations)
+⚠️ GitHub API is responding slowly
+
+**Recommended:** Concurrency of 1
+
+### Keep Default When:
+
+👍 First time running the CLI
+👍 Unsure about your network conditions
+👍 Want the best balance of speed and stability
+
+**Recommended:** Concurrency of 2 (default)
+
+## Error Handling with Concurrency
+
+The CLI handles errors gracefully in concurrent execution:
+
+```typescript
+// From src/achievements/base.ts:183-196
+for (const res of results) {
+  if (res.success && res.result) {
+    // Track successful operation
+    prNumbers.push(res.result.prNumber);
+  } else if (res.error) {
+    // Log error but continue processing
+    errors.push(`Operation ${res.index + 1}: ${error.message}`);
+    logger.error(`Operation ${res.index + 1} failed`);
+  }
+}
+```
+
+<Note>
+**Failed operations don't stop other operations.** If operation #5 fails, operations #6, #7, etc. continue running. The CLI reports all errors at the end.
+</Note>
+
+## Best Practices
+
+### Recommended Settings by Use Case
+
+**Conservative (most stable)**
+```bash
+CONCURRENCY=1
+DELAY_MS=2000
+BATCH_SIZE=3
+```
+
+**Balanced (default, recommended)**
+```bash
+CONCURRENCY=2
+DELAY_MS=1000
+BATCH_SIZE=5
+```
+
+**Aggressive (fastest, riskier)**
+```bash
+CONCURRENCY=5
+DELAY_MS=500
+BATCH_SIZE=10
+```
+
+### Monitoring Performance
+
+The CLI logs concurrency information:
+
+```
+Starting Pull Shark (Gold) - 128 operations (concurrency: 2)
+Progress: 10/128 operations... (active: 2, queue: 118)
+Rate limiter: waiting 5000ms (15/15 requests)
+Completed 128 operations in 4m 23s
+```
+
+Watch for:
+- **Frequent rate limit waits** → Decrease concurrency
+- **Low active count** → Network issues or GitHub API slow
+- **Errors** → Check logs and reduce concurrency
+
+## Advanced: Rate Limiter Integration
+
+Concurrency works hand-in-hand with rate limiting:
+
+```typescript
+// From src/utils/rateLimiter.ts:60-66
+canProceed(): boolean {
+  this.cleanupOldTimestamps();
+  return (
+    this.activeRequests < this.config.maxConcurrent &&  // Concurrency check
+    this.requestTimestamps.length < this.config.maxPerMinute  // Rate limit check
+  );
+}
+```
+
+Both limits must be satisfied:
+1. **Concurrency limit**: No more than N active operations
+2. **Rate limit**: No more than M operations per minute
+
+If either limit is reached, new operations wait until a slot becomes available.
+
+## See Also
+
+- [Rate Limiting](/cli/rate-limits) - Understanding API rate limits
+- [Configuration](/configuration) - All environment variables
+- [Achievements Guide](/achievements/overview) - What each achievement does

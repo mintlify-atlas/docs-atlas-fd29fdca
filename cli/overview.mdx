@@ -1,0 +1,88 @@
+---
+title: CLI Overview
+description: Introduction to the GitHub Achievement CLI interactive interface
+---
+
+## Command
+
+The GitHub Achievement CLI is invoked with a single command:
+
+```bash
+github-achievement
+```
+
+## Interactive TUI Interface
+
+The CLI uses an **interactive terminal UI (TUI)** built with [Ink](https://github.com/vadimdemedes/ink) and React. Unlike traditional command-line tools, there are **no command-line flags or arguments**. All interaction happens through an intuitive menu-driven interface.
+
+### Key Features
+
+- **Pure interactive**: Navigate using arrow keys and Enter
+- **Visual feedback**: Spinners, status messages, and colored output
+- **Multi-screen flow**: Guided setup wizard and operation screens
+- **No manual configuration**: Interactive prompts for all settings
+
+## First Run Experience
+
+When you run `github-achievement` for the first time:
+
+1. **Language Selection** - Choose your preferred language
+2. **Setup Wizard** - Configure GitHub tokens and target repository
+3. **Main Menu** - Access all CLI features
+
+### Language Selection
+
+On first launch, you'll be prompted to select your language. This preference is saved and can be changed later through reconfiguration.
+
+```
+GitHub Achievement CLI
+
+Select your language / Wählen Sie Ihre Sprache / Выберите язык
+
+Language
+  🇺🇸 English
+  🇩🇪 Deutsch
+  🇷🇺 Русский
+
+Use ↑↓ to navigate, Enter to select
+```
+
+The language setting persists across sessions and affects all UI text.
+
+## Navigation Controls
+
+All screens use consistent keyboard controls:
+
+- **↑/↓** - Navigate menu items or lists
+- **Enter** - Select/confirm current item
+- **Ctrl+C** - Exit the application at any time
+
+## Entry Point
+
+The CLI is registered as a Node.js binary in `package.json:8`:
+
+```json
+"bin": {
+  "github-achievement": "dist/index.js"
+}
+```
+
+The entry point (`src/index.tsx:17`) simply renders the React-based Ink application:
+
+```tsx
+import { render } from 'ink';
+import App from './app/App.js';
+
+render(<App />);
+```
+
+## Requirements
+
+- **Node.js**: >=18.0.0
+- **GitHub Personal Access Token**: Required for API access
+- **Target Repository**: Where achievements will be created
+
+## Next Steps
+
+- [Interactive Menu Reference](/cli/interactive-menu) - Learn about all menu options
+- [Configuration Guide](/cli/configuration) - Set up tokens and repositories

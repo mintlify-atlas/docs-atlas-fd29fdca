@@ -1,0 +1,369 @@
+---
+title: Tracking Progress
+description: Learn how the CLI tracks achievement progress using a JSON database and how to resume interrupted runs
+---
+
+The GitHub Achievement CLI automatically tracks all achievement progress using a local JSON database. This enables you to safely interrupt operations and resume from where you left off.
+
+## Database Storage
+
+### File-Based Database
+
+The CLI uses JSON files instead of SQLite for cross-platform compatibility:
+
+```
+/project-root/
+  achievements-data-{username}.json  # Progress database per user
+```
+
+Each GitHub account gets its own database file, allowing you to manage multiple accounts independently.
+
+### What Gets Tracked
+
+The database stores:
+
+1. **Achievement Records**
+   - Achievement ID and name
+   - Target tier level
+   - Target operation count
+   - Completed operation count
+   - Current status (pending, in_progress, completed, failed)
+   - Created and updated timestamps
+
+2. **Operation Records**
+   - Operation type (PR, commit, issue, discussion)
+   - Operation number (1, 2, 3, ...)
+   - Status (pending, in_progress, completed, failed)
+   - GitHub resource IDs (PR number, branch name, commit SHA)
+   - Created and updated timestamps
+
+<Note>
+  The database is automatically initialized when you first run an achievement and saved after every operation completes.
+</Note>
+
+## Viewing Status
+
+You can view the status of all achievements at any time:
+
+<Steps>
+  <Step title="Open the main menu">
+    Run `npm start` to launch the CLI.
+  </Step>
+
+  <Step title="Select 'View Status'">
+    Choose **View Status** from the menu and press Enter.
+  </Step>
+
+  <Step title="Review progress">
+    You'll see two sections:
+    
+    **In Progress** - Achievements currently being worked on:
+    ```
+    In Progress:
+    🎖️ Pair Extraordinaire (Bronze)
+      [████████░░░░░░░░░░░░░░] 15/48
+    
+    🦈 Pull Shark (Silver)
+      [██████░░░░░░░░░░░░░░░] 6/16
+    ```
+    
+    **Completed** - Achievements that have finished:
+    ```
+    Completed:
+    ✓ ⚡ Quickdraw (Default)
+    ✓ 🎲 YOLO (Default)
+    ```
+  </Step>
+</Steps>
+
+### Progress Bar Details
+
+The progress bar shows:
+- **Filled portion**: Completed operations
+- **Empty portion**: Remaining operations
+- **Numbers**: `completed/total` operations
+
+## Resume Capability
+
+One of the CLI's most powerful features is its ability to resume interrupted runs.
+
+### How Resume Works
+
+<Accordion title="Automatic State Management">
+  The CLI tracks each operation's state:
+  
+  - **Pending**: Not yet started
+  - **In Progress**: Currently running
+  - **Completed**: Successfully finished
+  - **Failed**: Encountered an error
+  
+  When you interrupt execution (Ctrl+C), all states are saved to the database.
+</Accordion>
+
+<Accordion title="Stuck Operation Detection">
+  If the CLI exits unexpectedly, some operations may remain in the "in_progress" state. On the next run, these are automatically detected and reset to "pending" so they can be retried.
+  
+  From `src/db/database.ts:352`:
+  ```typescript
+  export function resetStuckOperations(achievementId: AchievementId): number {
+    let resetCount = 0;
+    for (const op of database.operations) {
+      if (op.achievementId === achievementId && op.status === 'in_progress') {
+        op.status = 'pending';
+        resetCount++;
+      }
+    }
+    return resetCount;
+  }
+  ```
+</Accordion>
+
+<Accordion title="Operation Deduplication">
+  The CLI never re-runs completed operations. It queries the database for completed operation numbers and skips them:
+  
+  From `src/achievements/base.ts:116`:
+  ```typescript
+  // Get set of already completed operation numbers
+  const completedOperations = getCompletedOperationNumbers(this.achievementId);
+  let completed = completedOperations.size;
+  
+  if (completed > 0) {
+    logger.info(`Resuming: ${completed}/${this.targetCount} already completed`);
+  }
+  ```
+</Accordion>
+
+### Resuming After Interruption
+
+To resume after interrupting execution:
+
+<Steps>
+  <Step title="Restart the CLI">
+    Simply run `npm start` again. Your progress is already saved.
+  </Step>
+
+  <Step title="Check status (optional)">
+    Use **View Status** to see how many operations completed before interruption.
+  </Step>
+
+  <Step title="Run the same achievement again">
+    Select **Run Achievements** and choose the same achievement and tier you were working on.
+  </Step>
+
+  <Step title="Automatic resume">
+    The CLI will detect existing progress and skip completed operations:
+    
+    ```
+    Starting Pair Extraordinaire (Bronze) - 48 operations
+    Resuming: 15/48 already completed
+    ```
+    
+    Only the remaining 33 operations will be executed.
+  </Step>
+</Steps>
+
+<Tip>
+  You don't need to do anything special to resume. The CLI automatically continues from where it left off based on the database state.
+</Tip>
+
+## Understanding Operation States
+
+The database tracks four states for each operation:
+
+### Pending
+
+**Status**: Operation not yet started  
+**Action**: Will be executed when the achievement runs
+
+### In Progress
+
+**Status**: Operation currently running  
+**Action**: If the CLI exits, this will be reset to "pending" on next run  
+**Duration**: Temporary state, only while the operation is active
+
+<Warning>
+  If you see operations stuck in "in_progress" state after a clean exit, this indicates the operation failed to update its final status. These will be automatically reset on the next run.
+</Warning>
+
+### Completed
+
+**Status**: Operation finished successfully  
+**Action**: Will be skipped on future runs  
+**Data Stored**: 
+- PR number (for PR-based achievements)
+- Branch name
+- Commit SHA
+- Issue/discussion IDs
+
+### Failed
+
+**Status**: Operation encountered an error  
+**Action**: Can be retried by running the achievement again  
+**Data Stored**: Error message (if available)
+
+## Database Operations
+
+### Per-User Isolation
+
+Each GitHub account has its own database file:
+
+```
+achievements-data-alice.json  # Progress for user 'alice'
+achievements-data-bob.json    # Progress for user 'bob'
+```
+
+This allows you to:
+- Switch between accounts without losing progress
+- Track achievements for multiple accounts simultaneously
+- Keep progress separate and organized
+
+From `src/db/database.ts:28`:
+```typescript
+export function setDatabaseUser(username: string): void {
+  if (username !== currentUsername) {
+    currentUsername = username;
+    DB_PATH = join(PROJECT_ROOT, `achievements-data-${username}.json`);
+    db = null; // Force reload for new user
+  }
+}
+```
+
+### Automatic Saving
+
+The database is saved automatically:
+- After creating or updating an achievement record
+- After creating or updating an operation record
+- When closing the database (on CLI exit)
+
+You never need to manually save progress.
+
+### Database Structure
+
+The JSON file contains:
+
+```json
+{
+  "achievements": {
+    "pair-extraordinaire": {
+      "id": "pair-extraordinaire",
+      "name": "Pair Extraordinaire",
+      "tier": "bronze",
+      "targetCount": 48,
+      "completedCount": 15,
+      "status": "in_progress",
+      "createdAt": "2024-03-04T10:00:00Z",
+      "updatedAt": "2024-03-04T10:15:00Z"
+    }
+  },
+  "operations": [
+    {
+      "id": 1,
+      "achievementId": "pair-extraordinaire",
+      "operationType": "pr",
+      "operationNumber": 1,
+      "status": "completed",
+      "prNumber": 123,
+      "branchName": "pair-extraordinaire-1",
+      "commitSha": "abc123...",
+      "createdAt": "2024-03-04T10:00:00Z",
+      "updatedAt": "2024-03-04T10:01:00Z"
+    }
+  ],
+  "config": {},
+  "nextOperationId": 2
+}
+```
+
+## Troubleshooting Database Issues
+
+### Database Not Found
+
+If you see "No achievements started yet" in the status view:
+- This is normal if you haven't run any achievements yet
+- Run an achievement first, then check status
+
+### Corrupted Database
+
+If the database file becomes corrupted:
+
+<Steps>
+  <Step title="Stop the CLI">
+    Press Ctrl+C to exit if running.
+  </Step>
+
+  <Step title="Back up the database">
+    ```bash
+    cp achievements-data-{username}.json achievements-data-{username}.backup.json
+    ```
+  </Step>
+
+  <Step title="Delete the database">
+    ```bash
+    rm achievements-data-{username}.json
+    ```
+  </Step>
+
+  <Step title="Restart the CLI">
+    A new database will be created automatically. Your progress will be lost, but you can start fresh.
+  </Step>
+</Steps>
+
+<Warning>
+  Deleting the database file will erase all progress tracking. You'll need to re-run achievements from the beginning.
+</Warning>
+
+### Progress Not Saving
+
+If progress doesn't seem to be saved:
+
+1. **Check file permissions**: Ensure the CLI can write to the project directory
+2. **Check disk space**: Ensure you have enough disk space
+3. **Check for errors**: Look for database errors in the CLI output
+4. **Force save**: The database is saved on clean exit (not Ctrl+C during operation)
+
+From `src/db/database.ts:84`:
+```typescript
+function saveDatabase(): void {
+  if (!db) return;
+  
+  try {
+    const dir = dirname(DB_PATH);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  } catch (error) {
+    logger.error('Failed to save database:', error);
+  }
+}
+```
+
+## Manual Database Management
+
+### Viewing the Database
+
+You can view the database file directly:
+
+```bash
+cat achievements-data-{username}.json | jq
+```
+
+### Clearing All Progress
+
+To start completely fresh:
+
+```bash
+rm achievements-data-*.json
+```
+
+This removes all progress for all users.
+
+### Exporting Progress
+
+To back up your progress:
+
+```bash
+cp achievements-data-{username}.json ~/backups/
+```
+
+You can restore it later by copying it back.

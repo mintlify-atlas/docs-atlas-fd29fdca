@@ -1,0 +1,288 @@
+---
+title: Configuration
+description: Setup wizard and configuration management for GitHub Achievement CLI
+---
+
+## Initial Setup Wizard
+
+The setup wizard runs automatically when:
+- You launch the CLI for the first time
+- No `.env` file exists
+- You select "Reconfigure" from the main menu
+
+The wizard guides you through a multi-step process defined in `src/app/screens/SetupScreen.tsx`.
+
+## Setup Flow
+
+The setup wizard consists of these steps:
+
+### 1. GitHub Token
+
+The wizard first requests your GitHub Personal Access Token:
+
+```
+Setup - First-time configuration
+
+Welcome! Let's get you set up. You'll need a GitHub Personal Access Token.
+Generate one at: https://github.com/settings/tokens
+Required scope: repo
+
+GitHub Token: ****************
+Paste your Personal Access Token
+```
+
+**Token Format Validation** (`src/app/screens/SetupScreen.tsx:59-62`):
+- Must start with `ghp_` or `github_pat_`
+- Cannot be empty
+
+**Token Authentication** (`src/app/screens/SetupScreen.tsx:68`):
+- Validates token with GitHub API
+- Retrieves your username
+- Shows error if invalid: `"Token validation failed. Check your token and try again."`
+
+### 2. Target Repository
+
+After successful authentication:
+
+```
+✓ Authenticated as username
+
+Target Repository: username/GitHub-Achievements-Manager
+Repository where achievements will be created
+```
+
+**Default Repository**:  
+The wizard pre-fills `{username}/GitHub-Achievements-Manager` but you can specify any repository in `owner/repo` format.
+
+**Repository Validation** (`src/app/screens/SetupScreen.tsx:94-118`):
+- Verifies `owner/repo` format
+- Checks repository access permissions
+- Tests Discussions availability
+- Shows error if inaccessible: `"Could not access repository. Check the name and your permissions."`
+
+### 3. Discussions Check
+
+The wizard automatically checks if Discussions are enabled:
+
+```
+✓ Authenticated as username
+✓ Repository: owner/repo
+Checking Discussions status...
+```
+
+If Discussions are **not enabled**, the wizard skips helper account setup and saves configuration immediately.
+
+If Discussions **are enabled**, you'll be prompted about the helper account.
+
+### 4. Helper Account (Optional)
+
+For repositories with Discussions enabled:
+
+```
+✓ Authenticated as username
+✓ Repository: owner/repo
+✓ Discussions enabled
+
+Galaxy Brain and YOLO achievements require a second GitHub account.
+The helper account creates questions/reviews, your main account responds.
+
+Configure Galaxy Brain/YOLO? (requires 2nd account) [Y/n]:
+```
+
+**Choosing "Yes"** continues to helper token input.  
+**Choosing "No"** skips to configuration save.
+
+### 5. Helper Token
+
+If you opt in for helper account features:
+
+```
+✓ Authenticated as username
+✓ Repository: owner/repo
+✓ Discussions enabled
+
+Helper Account Token: ****************
+Token from your second GitHub account
+```
+
+**Helper Token Validation** (`src/app/screens/SetupScreen.tsx:160-168`):
+- Must be a valid GitHub token format
+- Cannot be the same account as main token
+- Authenticated separately
+
+**Error Messages**:
+- `"Helper account must be different from your main account"`
+- `"Token validation failed. Check your token and try again."`
+
+### 6. Collaborator Invitation
+
+The wizard checks if the helper account has collaborator access (`src/app/screens/SetupScreen.tsx:171-183`):
+
+```
+✓ Authenticated as username
+✓ Repository: owner/repo
+✓ Discussions enabled
+✓ Helper account: helper_username
+
+Helper account needs collaborator access on owner/repo
+This allows them to create discussions and submit PR reviews.
+
+Invite helper_username as collaborator? [Y/n]:
+```
+
+If accepted, the CLI automatically sends a collaborator invitation via the GitHub API.
+
+### 7. Configuration Save
+
+The wizard saves all settings to a `.env` file:
+
+```
+✓ Authenticated as username
+✓ Repository: owner/repo
+✓ Discussions enabled
+✓ Helper account: helper_username
+Saving configuration...
+```
+
+### 8. Star Prompt (Optional)
+
+After successful setup:
+
+```
+✓ Configuration saved!
+
+Star n0/GitHub-Achievement-CLI on GitHub? [Y/n]:
+```
+
+This is an optional prompt to star the CLI project repository. If you have a helper account configured, both accounts will star the repository.
+
+## Configuration File
+
+All settings are saved to a `.env` file in your working directory.
+
+### Generated .env Structure
+
+The `createEnvFile()` function (`src/app/screens/SetupScreen.tsx:226-234`) creates:
+
+```bash
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your_username
+TARGET_REPO=owner/repo
+COAUTHOR_NAME=n0
+COAUTHOR_EMAIL=luke@u.software
+BRANCH_PREFIX=achievement
+DELAY_MS=1000
+HELPER_TOKEN=ghp_helper_token_here  # Only if configured
+```
+
+### Configuration Parameters
+
+| Parameter | Description | Default | Editable |
+|-----------|-------------|---------|----------|
+| `GITHUB_TOKEN` | Personal Access Token for main account | Required | Yes (via wizard) |
+| `GITHUB_USERNAME` | Your GitHub username | Auto-detected | No |
+| `TARGET_REPO` | Repository for achievements (owner/repo) | `{username}/GitHub-Achievements-Manager` | Yes |
+| `COAUTHOR_NAME` | Co-author credit on commits | `n0` | No (hardcoded) |
+| `COAUTHOR_EMAIL` | Co-author email | `luke@u.software` | No (hardcoded) |
+| `BRANCH_PREFIX` | Prefix for achievement branches | `achievement` | No |
+| `DELAY_MS` | Delay between GitHub API calls | `1000` | No |
+| `HELPER_TOKEN` | Token for second account (optional) | None | Yes (via wizard) |
+
+### Advanced Configuration
+
+The `AppConfig` type (`src/app/screens/SetupScreen.tsx:97-111`) includes additional internal settings not exposed in `.env`:
+
+```tsx
+batchSize: 5
+verbose: false
+testMode: false
+logLevel: 'info'
+concurrency: 3
+maxRequestsPerMinute: 70
+```
+
+These are hardcoded and cannot be changed through the interactive wizard.
+
+## Language Configuration
+
+Language preference is stored separately from the `.env` file.
+
+### Language Selection Screen
+
+On first run, before setup:
+
+```
+GitHub Achievement CLI
+
+Select your language / Wählen Sie Ihre Sprache / Выберите язык
+
+Language
+  🇺🇸 English
+  🇩🇪 Deutsch
+  🇷🇺 Русский
+
+Use ↑↓ to navigate, Enter to select
+```
+
+**Implementation** (`src/app/screens/LanguageScreen.tsx:11-20`):
+- Displays all supported languages from `LANGUAGES` constant
+- Shows language flag emoji and native name
+- Saves selection using `saveLanguage()` function
+
+**Language Persistence**:  
+The language choice is saved separately and persists across:
+- Setup wizard runs
+- Configuration changes
+- Application restarts
+
+To change language later, use the **Reconfigure** menu option and select a new language when prompted.
+
+## Reconfiguration
+
+You can reconfigure at any time by selecting **Reconfigure** from the main menu.
+
+### Reconfiguration Process
+
+1. Clears cached configuration (`src/app/App.tsx:169`)
+2. Re-enters setup wizard
+3. Allows changing all settings:
+   - GitHub token
+   - Target repository
+   - Helper account
+4. Overwrites existing `.env` file
+
+**Warning**: Reconfiguring does not preserve old settings. You'll need to re-enter all values.
+
+## Configuration Validation
+
+The CLI validates configuration on every launch (`src/app/App.tsx:39-87`):
+
+### Validation Checks
+
+1. **Language exists** - Shows language screen if not set
+2. **`.env` file exists** - Shows setup wizard if missing
+3. **Token is valid** - Tests GitHub API authentication
+4. **Repository is accessible** - Verifies permissions
+5. **Helper token works** - If configured, validates second account
+
+### Validation Failures
+
+If validation fails:
+```tsx
+catch (err) {
+  // Config is invalid, go to setup
+  clearConfigCache();
+  setScreen('setup');
+}
+```
+
+The CLI automatically enters setup mode to fix the configuration.
+
+## Configuration Cache
+
+The configuration is cached in memory after loading from `.env`. The cache is cleared when:
+- Reconfiguration is selected
+- Validation fails
+- `.env` file is manually deleted
+
+This prevents re-reading the file on every operation while ensuring fresh data after changes.

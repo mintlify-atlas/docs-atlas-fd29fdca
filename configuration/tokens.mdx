@@ -1,0 +1,405 @@
+---
+title: 'GitHub Tokens'
+description: 'How to create, configure, and secure GitHub Personal Access Tokens for GitHub Achievement CLI'
+---
+
+## Overview
+
+GitHub Achievement CLI requires GitHub Personal Access Tokens (PATs) to interact with the GitHub API. You'll need:
+
+- **Main account token** (required): For your primary GitHub account
+- **Helper account token** (optional): For Galaxy Brain and YOLO achievements
+
+## Creating a GitHub Personal Access Token
+
+<Steps>
+  <Step title="Navigate to Token Settings">
+    Go to GitHub's Personal Access Token page:
+    
+    **[https://github.com/settings/tokens](https://github.com/settings/tokens)**
+    
+    Or navigate manually:
+    1. Click your profile picture (top right)
+    2. Settings → Developer settings → Personal access tokens → Tokens (classic)
+  </Step>
+
+  <Step title="Generate New Token">
+    Click **Generate new token** → **Generate new token (classic)**
+    
+    <Note>
+      Use "classic" tokens, not "fine-grained" tokens. The CLI is designed for classic PATs.
+    </Note>
+    
+    You may be asked to confirm your password.
+  </Step>
+
+  <Step title="Configure Token">
+    Fill in the token details:
+    
+    **Note**: Give your token a descriptive name
+    - Example: `GitHub Achievement CLI - Main Account`
+    - Example: `GitHub Achievement CLI - Helper Account`
+    
+    **Expiration**: Choose an expiration period
+    - Recommendation: 90 days (balance between security and convenience)
+    - You can regenerate when it expires
+    
+    <Warning>
+      Tokens with no expiration are less secure. Set an expiration date and rotate tokens periodically.
+    </Warning>
+  </Step>
+
+  <Step title="Select Scopes">
+    Select the required scopes (permissions) for the token.
+    
+    ### For Main Account Token:
+    
+    **Required scope:**
+    - ✅ **repo** (Full control of private repositories)
+      - Includes: `repo:status`, `repo_deployment`, `public_repo`, `repo:invite`, `security_events`
+    
+    This scope allows the CLI to:
+    - Create and delete branches
+    - Make commits
+    - Open and merge pull requests
+    - Create and close issues
+    - Access repository discussions
+    
+    ### For Helper Account Token:
+    
+    **Required scopes:**
+    - ✅ **repo** (Full control of private repositories)
+    - ✅ **write:discussion** (Read and write discussion content)
+    
+    <Note>
+      The helper token needs `write:discussion` to create discussion questions and mark answers as accepted.
+    </Note>
+  </Step>
+
+  <Step title="Generate and Copy Token">
+    Click **Generate token** at the bottom of the page.
+    
+    **Your token will be displayed once** - copy it immediately!
+    
+    - Format: `ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` (classic)
+    - Or: `github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx` (fine-grained, if used)
+    - Length: 40+ characters
+    
+    <Warning>
+      You won't be able to see this token again. If you lose it, you'll need to generate a new one.
+    </Warning>
+    
+    Store it temporarily in a secure location (password manager, secure note).
+  </Step>
+</Steps>
+
+## Token Requirements
+
+### Main Account Token
+
+<ParamField path="Format" type="string">
+  Must start with `ghp_` or `github_pat_`
+</ParamField>
+
+<ParamField path="Scope" type="string">
+  **repo** - Full control of private repositories
+</ParamField>
+
+<ParamField path="Permissions" type="object">
+  Token must allow:
+  - Creating/deleting branches
+  - Creating commits
+  - Opening/merging pull requests
+  - Creating/closing issues
+  - Accessing discussions (if enabled)
+</ParamField>
+
+### Helper Account Token (Optional)
+
+<ParamField path="Format" type="string">
+  Must start with `ghp_` or `github_pat_`
+</ParamField>
+
+<ParamField path="Scopes" type="array">
+  - **repo** - Full control of private repositories
+  - **write:discussion** - Read and write discussion content
+</ParamField>
+
+<ParamField path="Account" type="string">
+  Must be from a **different GitHub account** than the main token
+</ParamField>
+
+<ParamField path="Collaborator Access" type="boolean">
+  Helper account should be added as a collaborator on the target repository
+</ParamField>
+
+## Setting Up Helper Account
+
+Galaxy Brain and YOLO achievements require a second GitHub account:
+
+<Steps>
+  <Step title="Create Second GitHub Account">
+    If you don't have a second account:
+    
+    1. Sign out of your main GitHub account
+    2. Go to [https://github.com/join](https://github.com/join)
+    3. Create a new account (free tier is sufficient)
+    4. Verify email address
+    
+    <Note>
+      You can use a `+` alias in your email: `youremail+helper@gmail.com`
+    </Note>
+  </Step>
+
+  <Step title="Generate Helper Token">
+    While logged into your **helper account**:
+    
+    1. Go to [https://github.com/settings/tokens](https://github.com/settings/tokens)
+    2. Generate new token (classic)
+    3. Select scopes: **repo** and **write:discussion**
+    4. Copy the token
+  </Step>
+
+  <Step title="Add Helper as Collaborator">
+    From your **main account**:
+    
+    1. Go to your target repository
+    2. Settings → Collaborators → Add people
+    3. Enter helper account username
+    4. Send invitation
+    
+    From your **helper account**:
+    1. Check email or GitHub notifications
+    2. Accept the collaboration invitation
+    
+    <Note>
+      The CLI setup wizard can do this automatically for you.
+    </Note>
+  </Step>
+
+  <Step title="Configure in CLI">
+    During setup or reconfiguration, provide the helper token when prompted.
+    
+    The CLI will:
+    - Validate the token
+    - Verify it's a different account
+    - Check/add collaborator access
+  </Step>
+</Steps>
+
+## Token Validation
+
+The CLI validates tokens during setup:
+
+<CodeGroup>
+```bash Token Format Check
+# Valid formats:
+ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Invalid formats:
+gh_xxxxx        ❌ Wrong prefix
+token123        ❌ No prefix
+```
+
+```bash Authentication Test
+# CLI tests token by fetching user info:
+GET /user
+
+# Success: Shows your username
+✓ Authenticated as: your-username
+
+# Failure: Token is invalid/expired
+✗ Token validation failed
+```
+</CodeGroup>
+
+## Using Tokens in Configuration
+
+Tokens are stored in your `.env` file:
+
+```env
+# Main account token
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Helper account token (optional)
+HELPER_TOKEN=ghp_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+```
+
+<Warning>
+  **Never commit your `.env` file to version control!** The repository's `.gitignore` excludes it by default.
+</Warning>
+
+## Token Security Best Practices
+
+### Protection
+
+<AccordionGroup>
+  <Accordion title="Never commit tokens to Git">
+    - Always use `.env` files (excluded by `.gitignore`)
+    - Never hardcode tokens in source code
+    - Use environment variables, not inline strings
+    - Review commits before pushing
+  </Accordion>
+
+  <Accordion title="Use minimal required scopes">
+    - Main token: Only `repo` scope
+    - Helper token: Only `repo` and `write:discussion`
+    - Don't grant additional unnecessary permissions
+  </Accordion>
+
+  <Accordion title="Set expiration dates">
+    - Choose 30-90 day expiration periods
+    - Rotate tokens before expiration
+    - Delete old tokens from GitHub settings
+    - Keep track of expiration dates
+  </Accordion>
+
+  <Accordion title="Secure storage">
+    - Store tokens in password manager
+    - Don't share tokens via email/chat
+    - Don't include in screenshots
+    - Clear terminal history after pasting
+  </Accordion>
+
+  <Accordion title="Monitor token usage">
+    - Check GitHub Settings → Personal access tokens
+    - Review "Last used" dates
+    - Delete unused tokens
+    - Regenerate if compromised
+  </Accordion>
+</AccordionGroup>
+
+### If Token is Compromised
+
+If you suspect your token has been exposed:
+
+<Steps>
+  <Step title="Revoke Immediately">
+    1. Go to [https://github.com/settings/tokens](https://github.com/settings/tokens)
+    2. Find the compromised token
+    3. Click **Delete** or **Revoke**
+    4. Confirm deletion
+  </Step>
+
+  <Step title="Generate New Token">
+    Follow the [token creation steps](#creating-a-github-personal-access-token) to create a new token with the same scopes.
+  </Step>
+
+  <Step title="Update Configuration">
+    Update your `.env` file with the new token:
+    
+    ```bash
+    # Edit .env
+    nano .env
+    
+    # Or use CLI reconfigure
+    npm start
+    # Select: Reconfigure
+    ```
+  </Step>
+
+  <Step title="Verify">
+    Test the new token:
+    
+    ```bash
+    npm start
+    # Should authenticate successfully
+    ```
+  </Step>
+</Steps>
+
+## Token Expiration
+
+When your token expires:
+
+1. **CLI will fail with authentication errors**
+   ```
+   Error: Token validation failed
+   ```
+
+2. **Generate a new token** with the same scopes
+
+3. **Update `.env` file** with the new token
+
+4. **Restart the CLI** - it will work immediately
+
+<Note>
+  Set a calendar reminder a few days before expiration to rotate tokens proactively.
+</Note>
+
+## Troubleshooting Tokens
+
+### Token Validation Failed
+
+**Symptoms**: CLI shows "Token validation failed. Check your token and try again."
+
+**Solutions**:
+- Verify token format starts with `ghp_` or `github_pat_`
+- Check token hasn't expired (GitHub settings)
+- Ensure **repo** scope is selected
+- Try regenerating the token
+- Check internet connectivity
+- Verify no typos when copying token
+
+### Insufficient Permissions
+
+**Symptoms**: Errors when creating branches, PRs, or issues
+
+**Solutions**:
+- Verify token has **repo** scope (not just `public_repo`)
+- Check you have write access to target repository
+- Ensure repository isn't archived or disabled
+- Confirm token is from correct account
+
+### Helper Token Rejected
+
+**Symptoms**: "Helper account must be different from your main account"
+
+**Solutions**:
+- Use token from a **different** GitHub account
+- Verify you're logged into helper account when generating token
+- Create a second GitHub account if needed
+
+### Rate Limiting
+
+**Symptoms**: "Rate limit exceeded" errors
+
+**Solutions**:
+- Wait for rate limit reset (check error message for time)
+- Increase `DELAY_MS` in configuration
+- Reduce `BATCH_SIZE` for fewer parallel operations
+- Authenticated requests have higher limits (5000/hour vs 60/hour)
+
+## Checking Token Info
+
+You can check token details via GitHub API:
+
+```bash
+# Check token scopes and info
+curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/user
+
+# Check rate limit status
+curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/rate_limit
+```
+
+Or view in GitHub:
+1. Go to [https://github.com/settings/tokens](https://github.com/settings/tokens)
+2. View token details (note, scopes, last used)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Initial Setup" icon="play" href="/configuration/setup">
+    Complete setup wizard with your tokens
+  </Card>
+  <Card title="Environment Variables" icon="gear" href="/configuration/environment-variables">
+    Configure all settings in .env file
+  </Card>
+  <Card title="Achievements" icon="trophy" href="/achievements/overview">
+    Start earning achievements
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/guides/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>

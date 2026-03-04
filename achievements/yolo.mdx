@@ -1,0 +1,267 @@
+---
+title: YOLO
+description: Earn the YOLO achievement by merging a pull request without code review
+---
+
+The **YOLO** achievement is earned by merging your own pull request without waiting for code review. This achievement requires a helper account to request a review from, which you then ignore by merging immediately.
+
+## Achievement Details
+
+| Property | Value |
+|----------|-------|
+| **Achievement ID** | `yolo` |
+| **Icon** | 🎲 |
+| **Description** | Merged PR without code review (requires helper account) |
+| **Helper Account** | **Required** |
+| **Tiers** | Single tier only |
+
+<Warning>
+  This achievement **requires a second GitHub account** (helper account) to request a review from.
+</Warning>
+
+## Tier
+
+<Card title="Default Tier" icon="trophy">
+  **1** PR merged without waiting for code review
+</Card>
+
+<Info>
+  YOLO has only one tier. Once you merge one PR without review, you earn the achievement.
+</Info>
+
+## How It Works
+
+The automation creates a specific workflow to trigger the YOLO achievement:
+
+1. **Creates a branch** - Temporary branch like `achievements-yolo-1`
+2. **Makes a commit** - Regular commit to the branch
+3. **Opens pull request** - Creates PR from branch to main
+4. **Requests review from helper** - Adds helper account as reviewer
+5. **Immediately merges** - Merges PR without waiting for review
+6. **Cleans up** - Deletes the temporary branch
+
+<Note>
+  The key is requesting a review and then merging **before** the reviewer approves. This is what triggers the YOLO achievement.
+</Note>
+
+## Configuration
+
+Configure both your main token and helper token in `.env`:
+
+```env
+GITHUB_TOKEN=ghp_your_main_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+
+# Helper account (required for YOLO)
+HELPER_TOKEN=ghp_your_helper_token_here
+```
+
+<Warning>
+  Without a helper account, YOLO will fail with an error message.
+</Warning>
+
+## Implementation Details
+
+The helper account initialization (from `src/achievements/yolo.ts:30-58`):
+
+```typescript
+private async initialize(): Promise<void> {
+  if (this.initialized) return;
+  
+  // Get default branch
+  const { branch } = await getDefaultBranchSha(this.owner, this.repo);
+  this.defaultBranch = branch;
+  
+  // Get helper username for review request
+  const helper = getHelperClient();
+  if (helper) {
+    try {
+      const helperUser = await helper.validateToken();
+      this.helperUsername = helperUser.login;
+      logger.debug(`Using helper account ${this.helperUsername} as reviewer`);
+    } catch {
+      logger.warn('Helper account not available for YOLO - achievement may not trigger');
+    }
+  }
+  
+  if (!this.helperUsername) {
+    throw new Error(
+      'YOLO requires a helper account to request review from. Configure HELPER_TOKEN in your .env file.'
+    );
+  }
+  
+  this.initialized = true;
+}
+```
+
+The critical review request step (from `src/achievements/yolo.ts:105-111`):
+
+```typescript
+// Step 4: Request review from helper account (CRITICAL for YOLO!)
+await requestReview(this.owner, this.repo, pr.number, [this.helperUsername!]);
+logger.debug(`Requested review from ${this.helperUsername}`);
+
+// Step 5: Small delay then merge WITHOUT waiting for review (YOLO!)
+await delay(200);
+await mergePR(this.owner, this.repo, pr.number, { method: 'squash' });
+```
+
+<Info>
+  The 200ms delay ensures the review request is registered before the merge happens.
+</Info>
+
+## Workflow Example
+
+Here's what happens when you run YOLO:
+
+```
+✓ Create branch achievements-yolo-1
+✓ Commit to ACHIEVEMENTS.md
+✓ Open PR #1: "YOLO: Quick merge #1"
+✓ Request review from helper-account
+⏱  Wait 200ms
+✓ Merge PR #1 without waiting for review
+✓ Delete branch achievements-yolo-1
+✓ YOLO achievement earned!
+```
+
+The entire process takes approximately 5 seconds.
+
+## PR Content
+
+From `src/achievements/yolo.ts:89-103`, the PR includes:
+
+```typescript
+const pr = await createPR(this.owner, this.repo, {
+  title: `YOLO: Quick merge #${number}`,
+  body: `## YOLO Achievement
+
+This PR was merged without waiting for code review.
+
+Operation #${number}
+
+> *Living on the edge!* 🎲
+
+---
+*Created by GitHub Achievements Manager*`,
+  head: branchName,
+  base: this.defaultBranch,
+});
+```
+
+## Helper Account Requirements
+
+Your helper account needs:
+
+1. **Valid GitHub token** with `repo` scope
+2. **Access to the repository** (read access is sufficient)
+3. **Different from main account** (can't request review from yourself)
+
+<Note>
+  The helper account doesn't need to be a collaborator, but it should have visibility to the repository.
+</Note>
+
+## Branch Cleanup
+
+Automatic cleanup for orphaned branches (from `src/achievements/yolo.ts:138-146`):
+
+```typescript
+async cleanup(): Promise<void> {
+  const { deleteAllBranchesWithPrefix } = await import('../github/branch.js');
+  const prefix = `${this.config.branchPrefix}-yolo`;
+  
+  const deleted = await deleteAllBranchesWithPrefix(this.owner, this.repo, prefix);
+  if (deleted > 0) {
+    logger.info(`Cleaned up ${deleted} orphaned branches`);
+  }
+}
+```
+
+## Estimated Time
+
+From the achievement definition in `src/achievements/index.ts:72`:
+
+- **Estimated time per unit**: 5000ms (5 seconds)
+- **Total time**: ~5 seconds (single tier)
+
+<Info>
+  YOLO is quick to earn but requires the additional helper account setup.
+</Info>
+
+## Cleanup Considerations
+
+<Warning>
+  The merged PR remains in your repository history. Consider using "Reset Repo History" after earning YOLO.
+</Warning>
+
+Since YOLO creates only 1 merged PR, cleanup is minimal:
+
+1. **Branch** - Automatically deleted after merge
+2. **PR** - Remains in closed PRs (1 item)
+3. **Commit** - Remains in git history
+
+To fully clean up:
+- Use the CLI's "Reset Repo History" option to squash commits
+- Or delete and recreate the repository to remove all traces
+
+## Error Handling
+
+If helper account is not configured:
+
+```
+❌ Error: YOLO requires a helper account to request review from.
+Configure HELPER_TOKEN in your .env file.
+```
+
+If helper token is invalid:
+
+```
+⚠️  Warning: Helper account not available for YOLO - achievement may not trigger
+❌ Error: YOLO requires a helper account...
+```
+
+## Comparison with Other Achievements
+
+| Feature | YOLO | Quickdraw | Galaxy Brain |
+|---------|------|-----------|-------------|
+| **Tiers** | 1 | 1 | 4 (Default, Bronze, Silver, Gold) |
+| **Helper account** | Required | Not required | Required |
+| **Time** | ~5 seconds | ~2 seconds | ~8 to 128 seconds |
+| **Creates** | 1 PR | 1 Issue | 2-32 Discussions |
+| **Complexity** | Simple | Simplest | Medium |
+
+## Why Helper Account is Required
+
+The YOLO achievement specifically looks for:
+
+> "You merged a pull request while a review was requested but not approved"
+
+This requires:
+1. A **reviewer** must be requested (can't be yourself)
+2. The PR must be **merged** before they approve
+3. The merge must be done by the **PR author**
+
+Without a helper account, you can't request a review from anyone, so the achievement won't trigger.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test Helper Setup" icon="user-check">
+    Run YOLO to verify your helper account configuration is correct.
+  </Card>
+  <Card title="Single Use" icon="check">
+    Since YOLO is single-tier, you only need to run it once per account.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Galaxy Brain" icon="brain" href="/achievements/galaxy-brain">
+    Another achievement that uses the helper account
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn how to set up your helper account properly
+  </Card>
+</CardGroup>

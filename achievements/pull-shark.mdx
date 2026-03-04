@@ -1,0 +1,183 @@
+---
+title: Pull Shark
+description: Earn the Pull Shark achievement by creating and merging pull requests
+---
+
+The **Pull Shark** achievement is earned by creating pull requests that get merged. Unlike Pair Extraordinaire, this achievement doesn't require coauthored commits.
+
+## Achievement Details
+
+| Property | Value |
+|----------|-------|
+| **Achievement ID** | `pull-shark` |
+| **Icon** | 🦈 |
+| **Description** | Opened pull requests that have been merged |
+| **Helper Account** | Not required |
+
+## Tiers
+
+<CardGroup cols={2}>
+  <Card title="Default Tier" icon="trophy">
+    **2** merged pull requests
+  </Card>
+  <Card title="Bronze Tier" icon="medal">
+    **16** merged pull requests
+  </Card>
+  <Card title="Silver Tier" icon="medal">
+    **128** merged pull requests
+  </Card>
+  <Card title="Gold Tier" icon="medal">
+    **1024** merged pull requests
+  </Card>
+</CardGroup>
+
+<Warning>
+  The Gold tier requires **1024 merged PRs**. This will take significant time and create substantial repository history.
+</Warning>
+
+## How It Works
+
+The automation creates and merges pull requests:
+
+1. **Creates a branch** - Temporary branch like `achievements-shark-1`
+2. **Makes commit** - Regular commit (no coauthor needed)
+3. **Opens pull request** - Creates PR from branch to main
+4. **Merges PR** - Uses squash merge
+5. **Cleans up** - Deletes the temporary branch
+
+<Info>
+  Each operation creates one merged PR, incrementing your Pull Shark count.
+</Info>
+
+## Configuration
+
+Minimal configuration required in `.env`:
+
+```env
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+```
+
+<Note>
+  No helper account or coauthor configuration needed for Pull Shark.
+</Note>
+
+## Implementation Details
+
+From `src/achievements/pullShark.ts:62-68`:
+
+```typescript
+const commit = await createAchievementCommit(this.owner, this.repo, {
+  branch: branchName,
+  achievementName: 'Pull Shark',
+  number,
+  tier: this.tier,
+  // No coauthor for Pull Shark
+});
+```
+
+The PR creation and merge (from `src/achievements/pullShark.ts:71-85`):
+
+```typescript
+const pr = await createAndMergePR(this.owner, this.repo, {
+  title: `Achievement: Pull Shark #${number}`,
+  body: `## Pull Shark Achievement
+
+This PR was created as part of the Pull Shark achievement (${this.tier} tier).
+
+Operation #${number}/${this.targetCount}
+
+---
+*Created by GitHub Achievements Manager*`,
+  head: branchName,
+  base: this.defaultBranch,
+  mergeMethod: 'squash',
+  delayBeforeMerge: 500,
+});
+```
+
+## Workflow Example
+
+Here's what happens when you run Pull Shark for Default tier (2 PRs):
+
+```
+✓ Create branch achievements-shark-1
+✓ Commit to ACHIEVEMENTS.md
+✓ Open PR #1: "Achievement: Pull Shark #1"
+✓ Merge PR #1 (squash)
+✓ Delete branch achievements-shark-1
+
+✓ Create branch achievements-shark-2
+✓ Commit to ACHIEVEMENTS.md
+✓ Open PR #2: "Achievement: Pull Shark #2"
+✓ Merge PR #2 (squash)
+✓ Delete branch achievements-shark-2
+```
+
+## Gold Tier Considerations
+
+<Warning>
+  **1024 merged PRs** will:
+  - Take approximately 85 minutes to complete
+  - Create significant commit history in your repository
+  - Generate 1024 closed PRs in your GitHub profile
+</Warning>
+
+Recommendations for Gold tier:
+
+1. **Use a dedicated repository** - Don't mix with real project work
+2. **Plan cleanup** - Use "Reset Repo History" immediately after completion
+3. **Consider deletion** - You may want to delete and recreate the repo to clear PR history
+4. **Monitor rate limits** - The tool handles this automatically, but be aware of the volume
+
+## Branch Cleanup
+
+Automatic cleanup for orphaned branches (from `src/achievements/pullShark.ts:113-121`):
+
+```typescript
+async cleanup(): Promise<void> {
+  const { deleteAllBranchesWithPrefix } = await import('../github/branch.js');
+  const prefix = `${this.config.branchPrefix}-shark`;
+  
+  const deleted = await deleteAllBranchesWithPrefix(this.owner, this.repo, prefix);
+  if (deleted > 0) {
+    logger.info(`Cleaned up ${deleted} orphaned branches`);
+  }
+}
+```
+
+## Estimated Time
+
+From the achievement definition in `src/achievements/index.ts:39`:
+
+- **Estimated time per unit**: 5000ms (5 seconds)
+- **Default tier (2)**: ~10 seconds
+- **Bronze tier (16)**: ~80 seconds
+- **Silver tier (128)**: ~640 seconds (~10.5 minutes)
+- **Gold tier (1024)**: ~5120 seconds (~85 minutes)
+
+<Info>
+  Actual time may vary based on GitHub API response times and rate limiting. The tool uses 2 concurrent operations and 15 operations per minute.
+</Info>
+
+## Differences from Pair Extraordinaire
+
+| Feature | Pull Shark | Pair Extraordinaire |
+|---------|-----------|---------------------|
+| **Coauthor** | Not required | Required |
+| **Default tier** | 2 PRs | 1 PR |
+| **Gold tier** | 1024 PRs | 48 PRs |
+| **Commit type** | Regular commit | Coauthored commit |
+| **Branch prefix** | `shark` | `pair` |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pair Extraordinaire" icon="users" href="/achievements/pair-extraordinaire">
+    Similar PR-based achievement with coauthor requirement
+  </Card>
+  <Card title="Usage Guide" icon="rocket" href="/guides/running-achievements">
+    Learn how to run achievements
+  </Card>
+</CardGroup>

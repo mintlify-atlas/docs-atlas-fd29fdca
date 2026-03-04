@@ -1,0 +1,339 @@
+---
+title: Internationalization
+description: Using the CLI in your preferred language with support for 16 languages
+---
+
+## Overview
+
+GitHub Achievement CLI supports 16 languages with a fully localized interface. All prompts, menus, error messages, and status updates appear in your selected language.
+
+## Supported Languages
+
+The CLI supports the following languages (from `src/i18n/translations.ts:15-32`):
+
+| Language | Code | Native Name | Flag |
+|----------|------|-------------|------|
+| English | `en` | English | 🇺🇸 |
+| Spanish | `es` | Español | 🇪🇸 |
+| French | `fr` | Français | 🇫🇷 |
+| German | `de` | Deutsch | 🇩🇪 |
+| Russian | `ru` | Русский | 🇷🇺 |
+| Turkish | `tr` | Türkçe | 🇹🇷 |
+| Dutch | `nl` | Nederlands | 🇳🇱 |
+| Chinese | `zh` | 中文 | 🇨🇳 |
+| Arabic | `ar` | العربية | 🇸🇦 |
+| Japanese | `ja` | 日本語 | 🇯🇵 |
+| Korean | `ko` | 한국어 | 🇰🇷 |
+| Hindi | `hi` | हिन्दी | 🇮🇳 |
+| Portuguese | `pt` | Português | 🇧🇷 |
+| Indonesian | `id` | Bahasa Indonesia | 🇮🇩 |
+| Vietnamese | `vi` | Tiếng Việt | 🇻🇳 |
+| Polish | `pl` | Polski | 🇵🇱 |
+
+<Info>
+All languages use the same CLI functionality - only the interface text changes. GitHub API interactions are in English regardless of your language selection.
+</Info>
+
+## Language Selection Flow
+
+### First Run
+
+When you first run the CLI, you'll see the language selection screen:
+
+```
+┌──────────────────────────────────────┐
+│  Select your language                │
+│  Sélectionnez votre langue           │
+│  Wählen Sie Ihre Sprache             │
+│  选择您的语言                          │
+└──────────────────────────────────────┘
+
+❯ 🇺🇸  English
+  🇪🇸  Español
+  🇫🇷  Français
+  🇩🇪  Deutsch
+  🇷🇺  Русский
+  ...
+```
+
+From `src/i18n/translations.ts:154`:
+
+```typescript
+selectLanguage: 'Select your language'
+```
+
+### Navigation
+
+Use arrow keys to navigate:
+- **↑/↓** - Move between languages
+- **Enter** - Select language
+- **Esc** - Exit (if not first run)
+
+### Language Persistence
+
+Your language choice is saved in the configuration and persists across sessions. The CLI remembers your preference automatically.
+
+## Changing Language After Setup
+
+You can change the language at any time:
+
+1. Launch the CLI: `npm start`
+2. Select **Reconfigure** from the main menu
+3. Choose **Change Language**
+4. Select your new preferred language
+
+<Note>
+Changing the language only affects the CLI interface. Your GitHub account settings, achievement data, and repository content are not affected.
+</Note>
+
+## How Translations Work
+
+### Translation System
+
+The CLI uses a key-based translation system (from `src/i18n/translations.ts:731-733`):
+
+```typescript
+export function t(key: keyof Translations): string {
+  return translations[currentLanguage][key] || translations.en[key] || key;
+}
+```
+
+**Fallback order:**
+1. Selected language (e.g., `fr` for French)
+2. English default (if key not found in selected language)
+3. Raw key name (if key not found at all)
+
+### Translation Coverage
+
+From `src/i18n/translations.ts:34-151`, the translation interface includes:
+
+**UI Elements:**
+- Menu titles and options
+- Navigation hints
+- Button labels (Yes/No, Confirm/Cancel)
+- Loading and status messages
+
+**Setup Flow:**
+- Welcome messages
+- Token input prompts
+- Repository configuration
+- Helper account setup
+- Validation messages
+
+**Achievement Names:**
+- Pair Extraordinaire
+- Pull Shark  
+- Galaxy Brain
+- Quickdraw
+- YOLO
+- Tier levels (Bronze/Silver/Gold)
+
+**Execution:**
+- Progress indicators
+- Success/failure messages
+- Error descriptions
+- Time elapsed displays
+
+**Reset & Cleanup:**
+- Warning messages
+- Confirmation prompts
+- Success notifications
+
+### Example Translations
+
+Here's how the main menu appears in different languages:
+
+**English:**
+```
+What would you like to do?
+❯ Run Achievements - Select and execute achievement automation
+  View Status - Check progress on current achievements
+  Exit - Goodbye!
+```
+
+**French:**
+```
+Que souhaitez-vous faire ?
+❯ Exécuter les succès - Sélectionner et exécuter l'automatisation
+  Voir le statut - Vérifier la progression des succès actuels  
+  Quitter - Au revoir !
+```
+
+**Japanese:**
+```
+何をしたいですか？
+❯ 実績を実行 - 実績の自動化を選択して実行
+  ステータスを表示 - 現在の実績の進捗を確認
+  終了 - さようなら！
+```
+
+## Localization Features
+
+### Right-to-Left (RTL) Support
+
+The CLI supports RTL languages like Arabic:
+
+```typescript
+// From src/i18n/translations.ts:708
+const ar: Translations = {
+  selectLanguage: 'اختر لغتك',
+  menuTitle: 'GitHub Achievement CLI',
+  yes: 'نعم',
+  no: 'لا',
+  // ...
+};
+```
+
+<Note>
+Terminal RTL rendering depends on your terminal emulator's support. Modern terminals like Windows Terminal and iTerm2 handle RTL text correctly.
+</Note>
+
+### Date and Time Formatting
+
+Time displays use standard formats that are universally understood:
+
+```typescript
+// From src/utils/timing.ts:162-183
+export function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;  // e.g., "2h 15m"
+  }
+  
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;  // e.g., "3m 45s"
+  }
+  
+  return `${seconds}s`;  // e.g., "42s"
+}
+```
+
+### Number Formatting
+
+Numbers (progress, counts, etc.) use standard international format:
+- **1,024** operations
+- **15** ops/min
+- **2** concurrent
+
+## Translation Quality
+
+### Full Translations
+
+These languages have complete translations (150+ strings):
+- English (`en`)
+- Persian/Farsi (`fa`)
+- German (`de`)
+- French (`fr`)
+- Russian (`ru`)
+
+### Partial Translations
+
+These languages have key UI elements translated with English fallbacks:
+- Turkish (`tr`)
+- Dutch (`nl`)
+- Chinese (`zh`)
+- Spanish (`es`)
+- Arabic (`ar`)
+- Indonesian (`id`)
+- Japanese (`ja`)
+- Hindi (`hi`)
+- Vietnamese (`vi`)
+
+From `src/i18n/translations.ts:703-714`:
+
+```typescript
+// Short translations for remaining languages - key UI elements
+const tr: Translations = { ...en, selectLanguage: 'Dilinizi seçin', ... };
+const nl: Translations = { ...en, selectLanguage: 'Selecteer uw taal', ... };
+const zh: Translations = { ...en, selectLanguage: '选择您的语言', ... };
+// ... extends English with localized key phrases
+```
+
+<Info>
+Partial translations fall back to English for untranslated strings, ensuring the CLI always displays meaningful text.
+</Info>
+
+## Contributing Translations
+
+To improve or add translations:
+
+1. **File location**: `src/i18n/translations.ts`
+2. **Interface**: `Translations` (lines 34-151)
+3. **Add your language**: Follow existing pattern
+4. **Test**: Run `npm start` and select your language
+5. **Submit**: Create a pull request
+
+### Translation Template
+
+```typescript
+const es: Translations = {
+  // Language selection
+  selectLanguage: 'Seleccione su idioma',
+  
+  // Menu
+  menuTitle: 'GitHub Achievement CLI',
+  loggedInAs: 'Conectado como',
+  whatToDo: '¿Qué le gustaría hacer?',
+  
+  // ... (150+ keys total)
+};
+```
+
+### Translation Guidelines
+
+✅ **Do:**
+- Keep technical terms in English (e.g., "Pull Request", "GitHub")
+- Use formal tone for UI (polite "you")
+- Test RTL languages in a supporting terminal
+- Include native script (don't transliterate)
+
+❌ **Don't:**
+- Translate achievement names (they're official GitHub terms)
+- Use machine translation without review
+- Include cultural idioms that don't translate
+- Change formatting of technical values
+
+## Language API
+
+If using the CLI as a library, you can programmatically control language:
+
+```typescript
+import { setLanguage, getLanguage, t } from './i18n/translations.js';
+
+// Set language
+setLanguage('fr');
+
+// Get current language
+const currentLang = getLanguage();  // Returns: 'fr'
+
+// Translate a key
+const welcomeMsg = t('welcomeMessage');  // Returns French welcome text
+
+// Get all translations for current language
+import { getTranslations } from './i18n/translations.js';
+const allTranslations = getTranslations();
+console.log(allTranslations.menuTitle);  // "GitHub Achievement CLI"
+```
+
+### Available Functions
+
+From `src/i18n/translations.ts:723-737`:
+
+| Function | Description | Returns |
+|----------|-------------|----------|
+| `setLanguage(lang)` | Change active language | `void` |
+| `getLanguage()` | Get current language code | `Language` |
+| `t(key)` | Translate a key | `string` |
+| `getTranslations()` | Get all translations for current lang | `Translations` |
+
+## See Also
+
+- [Configuration](/configuration) - CLI setup and environment variables
+- [GitHub Contributing Guide](https://github.com/n0/GitHub-Achievement-CLI/blob/main/CONTRIBUTING.md) - How to contribute translations

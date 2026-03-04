@@ -1,0 +1,361 @@
+---
+title: Installation
+description: Complete installation guide for GitHub Achievement CLI. Covers requirements, installation steps, verification, and troubleshooting common issues.
+---
+
+# Installation
+
+Complete guide to installing and configuring GitHub Achievement CLI.
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    **Version:** 18.0.0 or higher
+    
+    The CLI requires modern Node.js features and uses ES modules.
+  </Card>
+  
+  <Card title="Git" icon="git">
+    **Any recent version**
+    
+    Required to clone the repository and for the CLI's git operations.
+  </Card>
+</CardGroup>
+
+### Check Node.js Version
+
+Verify your Node.js installation:
+
+```bash
+node --version
+```
+
+Expected output:
+
+```bash
+v18.0.0  # or higher (v18.x, v20.x, v22.x all work)
+```
+
+<Warning>
+  Node.js 16 and below are **not supported**. The package.json specifies `"node": ">=18.0.0"` as a hard requirement.
+</Warning>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone from GitHub:
+    
+    ```bash
+    git clone https://github.com/n0/GitHub-Achievement-CLI.git
+    cd GitHub-Achievement-CLI
+    ```
+    
+    <Note>
+      This creates a `GitHub-Achievement-CLI` directory in your current location.
+    </Note>
+  </Step>
+  
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+    
+    ```bash
+    npm install
+    ```
+    
+    This installs:
+    - `@octokit/rest` - GitHub API client
+    - `ink` - React for CLI rendering
+    - `dotenv` - Environment variable management
+    - `ink-select-input`, `ink-text-input`, `ink-spinner` - UI components
+    - TypeScript and type definitions
+    
+    <Note>
+      Installation typically takes 30-60 seconds depending on your connection.
+    </Note>
+  </Step>
+  
+  <Step title="Build the Project">
+    Compile TypeScript to JavaScript:
+    
+    ```bash
+    npm run build
+    ```
+    
+    This:
+    - Compiles all `.tsx` and `.ts` files from `src/` to JavaScript in `dist/`
+    - Validates TypeScript types
+    - Makes the CLI executable
+    
+    Expected output:
+    ```bash
+    > github-achievement-cli@1.0.0 build
+    > tsc
+    
+    # Completes silently if successful
+    ```
+  </Step>
+  
+  <Step title="Verify Installation">
+    Test that the CLI runs:
+    
+    ```bash
+    npm start
+    ```
+    
+    You should see the language selection screen or setup wizard.
+  </Step>
+</Steps>
+
+## Configuration
+
+The CLI creates a `.env` file during first run. You can also create it manually:
+
+### Manual Configuration
+
+Create `.env` in the project root:
+
+```env
+# Required
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your-github-username
+TARGET_REPO=username/repository-name
+
+# Optional: For Galaxy Brain and YOLO achievements
+HELPER_TOKEN=ghp_helper_token_here
+```
+
+### Getting a GitHub Token
+
+<Steps>
+  <Step title="Navigate to Token Settings">
+    Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+  </Step>
+  
+  <Step title="Generate New Token">
+    Click **Generate new token (classic)**
+    
+    <Note>
+      Use classic tokens, not fine-grained tokens. The CLI uses Octokit which works best with classic tokens.
+    </Note>
+  </Step>
+  
+  <Step title="Configure Token">
+    - **Note:** "GitHub Achievement CLI"
+    - **Expiration:** Choose based on preference (90 days recommended)
+    - **Scopes:** Select **repo** (full control of private repositories)
+      - This includes `repo:status`, `repo_deployment`, `public_repo`, and `repo:invite`
+  </Step>
+  
+  <Step title="Generate and Copy">
+    Click **Generate token** at the bottom
+    
+    Copy the token immediately - it starts with `ghp_`
+    
+    <Warning>
+      You cannot view the token again after leaving the page. Store it securely.
+    </Warning>
+  </Step>
+</Steps>
+
+### Target Repository Setup
+
+The target repository must:
+
+- Be owned by you (the token's user)
+- Be accessible with your token (public or private)
+- Have Issues enabled (default)
+- **Optional:** Have Discussions enabled (for Galaxy Brain achievement)
+
+#### Enable Discussions (Optional)
+
+For Galaxy Brain achievement:
+
+1. Go to your repository on GitHub
+2. Click **Settings** tab
+3. Scroll to **Features** section
+4. Check **Discussions**
+5. Click **Set up discussions**
+
+## Verification
+
+Confirm everything is working:
+
+<CodeGroup>
+```bash Check Installation
+# Should show version 18+
+node --version
+
+# Should show dist/ directory with compiled JS
+ls dist/
+
+# Should show ink, @octokit/rest, etc.
+npm list --depth=0
+```
+
+```bash Test Run
+# Launch the CLI
+npm start
+
+# You should see:
+# - Language selection screen (first run)
+# - Setup wizard (if .env doesn't exist)
+# - Main menu (if configured)
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Error: Cannot find module 'dist/index.js'" icon="circle-xmark">
+    **Problem:** The project hasn't been built.
+    
+    **Solution:**
+    ```bash
+    npm run build
+    ```
+    
+    Ensure the build completes without TypeScript errors.
+  </Accordion>
+  
+  <Accordion title="Error: Unsupported engine" icon="circle-xmark">
+    **Problem:** Node.js version is too old.
+    
+    **Solution:**
+    Update Node.js to version 18 or higher:
+    - Download from [nodejs.org](https://nodejs.org/)
+    - Or use a version manager like `nvm`:
+      ```bash
+      nvm install 18
+      nvm use 18
+      ```
+  </Accordion>
+  
+  <Accordion title="Error: Bad credentials" icon="circle-xmark">
+    **Problem:** GitHub token is invalid or expired.
+    
+    **Solution:**
+    1. Verify the token in `.env` is correct
+    2. Check the token hasn't expired at [github.com/settings/tokens](https://github.com/settings/tokens)
+    3. Ensure the token has `repo` scope
+    4. Generate a new token if needed
+  </Accordion>
+  
+  <Accordion title="Error: Not Found (404)" icon="circle-xmark">
+    **Problem:** Target repository doesn't exist or token lacks access.
+    
+    **Solution:**
+    1. Verify the repository exists: `https://github.com/username/repo`
+    2. Check `TARGET_REPO` format in `.env`: `username/repo` (no spaces, no URL)
+    3. Ensure you own the repository
+    4. For private repos, verify token has `repo` scope
+  </Accordion>
+  
+  <Accordion title="Build fails with TypeScript errors" icon="circle-xmark">
+    **Problem:** Corrupted dependencies or version mismatch.
+    
+    **Solution:**
+    ```bash
+    # Clean and reinstall
+    rm -rf node_modules package-lock.json
+    npm install
+    npm run build
+    ```
+  </Accordion>
+  
+  <Accordion title="Rate limit errors during execution" icon="circle-xmark">
+    **Problem:** GitHub API rate limits exceeded.
+    
+    **Solution:**
+    - The CLI has built-in rate limiting (15 ops/min, 2 concurrent)
+    - Check your rate limit status: [api.github.com/rate_limit](https://api.github.com/rate_limit)
+    - Wait for the hourly reset (shown in error message)
+    - The CLI automatically retries with exponential backoff
+  </Accordion>
+  
+  <Accordion title="Discussions not available for Galaxy Brain" icon="circle-xmark">
+    **Problem:** Repository doesn't have Discussions enabled.
+    
+    **Solution:**
+    1. Go to repository **Settings**
+    2. Check **Discussions** under Features
+    3. Complete the setup wizard
+    4. Restart the CLI
+  </Accordion>
+</AccordionGroup>
+
+## Alternative: Development Mode
+
+Run without building (for development):
+
+```bash
+npm run dev
+```
+
+This uses `tsx` to run TypeScript directly. Useful for:
+- Testing changes without rebuilding
+- Debugging with source maps
+- Development workflow
+
+<Note>
+  Dev mode requires `tsx` which is installed as a dev dependency.
+</Note>
+
+## File Structure
+
+After installation:
+
+```
+GitHub-Achievement-CLI/
+├── dist/                 # Compiled JavaScript (created by build)
+│   ├── index.js
+│   ├── app/
+│   ├── achievements/
+│   └── ...
+├── src/                  # TypeScript source code
+│   ├── index.tsx         # Entry point
+│   ├── app/              # UI components and screens
+│   ├── achievements/     # Achievement implementations
+│   ├── github/           # GitHub API client
+│   └── ...
+├── node_modules/         # Dependencies
+├── .env                  # Configuration (created on first run)
+├── achievements.db       # Progress database (created when running)
+├── logs/                 # Execution logs (created when running)
+├── package.json
+└── tsconfig.json
+```
+
+## Uninstallation
+
+To remove the CLI:
+
+```bash
+# Remove the entire directory
+cd ..
+rm -rf GitHub-Achievement-CLI
+```
+
+This removes:
+- All source code
+- Dependencies
+- Configuration (`.env`)
+- Progress database (`achievements.db`)
+- Logs
+
+<Warning>
+  Achievements already earned on your GitHub profile remain. Only local files are deleted.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Run your first achievement in 5 minutes
+  </Card>
+  
+  <Card title="Configuration" icon="gear">
+    Learn about advanced configuration options
+  </Card>
+</CardGroup>

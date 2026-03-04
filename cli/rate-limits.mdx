@@ -1,0 +1,220 @@
+---
+title: Rate Limiting
+description: Understanding and configuring GitHub API rate limits and the CLI's rate limiting implementation
+---
+
+## Overview
+
+The GitHub Achievement CLI implements sophisticated rate limiting to stay within GitHub's API limits and prevent errors. The tool uses a sliding window algorithm to track requests and automatically manages concurrency.
+
+## GitHub API Rate Limits
+
+GitHub enforces two main types of rate limits:
+
+- **Primary rate limit**: 5,000 requests per hour for authenticated requests
+- **Secondary rate limit**: 80 content-creating requests per minute (for PRs, commits, issues, etc.)
+
+<Warning>
+The secondary rate limit (80 requests/minute) is the primary concern for this CLI, as achievement workflows create PRs, commits, and issues.
+</Warning>
+
+## CLI Rate Limiting Implementation
+
+The tool implements a multi-layered rate limiting system to prevent hitting GitHub's limits:
+
+### Operation-Level Limits
+
+```typescript
+// Default configuration (src/utils/rateLimiter.ts:17-21)
+maxPerMinute: 15     // Operations per minute
+maxConcurrent: 2     // Parallel operations
+backoffBaseMs: 1000  // Base delay for exponential backoff
+```
+
+<Info>
+**Why 15 operations per minute?** Each operation makes approximately 5 API calls (create branch, commit, PR, merge, delete branch). This gives us `15 × 5 = 75` API calls per minute, safely under GitHub's 80 request/minute limit.
+</Info>
+
+### How It Works
+
+The rate limiter uses a **sliding window** approach:
+
+1. **Tracks timestamps** of all operations in the last 60 seconds
+2. **Cleans up old entries** outside the window automatically
+3. **Waits when limits are reached** until slots become available
+4. **Enforces concurrency** to prevent overwhelming the API
+
+From `src/utils/rateLimiter.ts:93-107`:
+
+```typescript
+async acquire(): Promise<void> {
+  while (!this.canProceed()) {
+    const waitTime = this.getWaitTime();
+    if (waitTime > 0) {
+      logger.debug(`Rate limiter: waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  this.activeRequests++;
+  this.requestTimestamps.push(Date.now());
+}
+```
+
+## Automatic Retry with Backoff
+
+When the CLI encounters a rate limit error (HTTP 429), it automatically retries using exponential backoff:
+
+```typescript
+// From src/utils/rateLimiter.ts:138-148
+handleRateLimitError(retryAfter?: number, attempt: number = 1): number {
+  if (retryAfter) {
+    return retryAfter * 1000;  // Use GitHub's retry-after header
+  }
+  
+  // Exponential backoff: 1s, 2s, 4s, 8s, 16s, ...
+  const baseDelay = 1000;
+  const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
+  const jitter = Math.random() * 1000;  // Random jitter to prevent thundering herd
+  return Math.min(exponentialDelay + jitter, 60000);  // Max 60 seconds
+}
+```
+
+### Retry Parameters
+
+- **Maximum retries**: 5 attempts (from `src/utils/timing.ts:15`)
+- **Base delay**: 1000ms
+- **Backoff multiplier**: 2x per attempt
+- **Maximum delay**: 60 seconds
+- **Jitter**: Random 0-1000ms added to prevent synchronized retries
+
+<Note>
+The jitter ensures that if multiple operations hit rate limits simultaneously, they don't all retry at exactly the same time.
+</Note>
+
+## Configuring Delays
+
+You can adjust rate limiting behavior through environment variables:
+
+### DELAY_MS
+
+Adds additional delay between individual operations:
+
+```bash
+# In .env file
+DELAY_MS=1000  # Default: 1 second between operations
+```
+
+From `src/achievements/base.ts:162-165`:
+
+```typescript
+if (this.config.delayMs > 0) {
+  await delay(this.config.delayMs);
+}
+```
+
+<Info>
+Increase `DELAY_MS` if you're still encountering rate limit errors. Try values like `2000` (2 seconds) or `3000` (3 seconds).
+</Info>
+
+### Safe Delay Bounds
+
+The CLI enforces minimum and maximum delays for safety:
+
+```typescript
+// From src/utils/timing.ts:8-10
+const MIN_DELAY = 100;    // Minimum 100ms
+const MAX_DELAY = 60000;  // Maximum 60 seconds
+```
+
+## Understanding Rate Limit Errors
+
+### Common Error Messages
+
+**"Rate limiter: waiting Xms"**
+- Normal operation - the CLI is pacing requests
+- No action needed
+
+**"You have exceeded a secondary rate limit"**
+- GitHub's 80 requests/minute limit was hit
+- The CLI will automatically retry with exponential backoff
+- Consider increasing `DELAY_MS` or reducing `BATCH_SIZE`
+
+**"API rate limit exceeded"**
+- Primary rate limit (5000/hour) was reached
+- Wait for rate limit to reset (shown in error message)
+- Very rare with default settings
+
+### Checking Rate Limit Status
+
+The rate limiter provides real-time statistics:
+
+```typescript
+// From src/utils/rateLimiter.ts:48-55
+getStats(): {
+  requestsLastMinute: number;  // Requests in last 60 seconds
+  active: number;              // Currently running operations
+  available: number;           // Available slots
+}
+```
+
+## Best Practices
+
+<Warning>
+**Don't disable rate limiting!** The rate limiter prevents your GitHub account from being temporarily blocked for abuse.
+</Warning>
+
+### Recommended Settings
+
+For most users (default settings work well):
+```bash
+DELAY_MS=1000
+BATCH_SIZE=5
+# Concurrency is managed automatically (default: 2)
+```
+
+If you encounter rate limit errors:
+```bash
+DELAY_MS=2000      # Increase delay
+BATCH_SIZE=3       # Reduce batch size
+```
+
+For faster execution (riskier):
+```bash
+DELAY_MS=500       # Minimum recommended
+BATCH_SIZE=10      # Monitor for errors
+```
+
+### Rate Limit Buffer
+
+The CLI adds a 5-second buffer when waiting for rate limits to reset:
+
+```typescript
+// From src/utils/timing.ts:11
+const RATE_LIMIT_BUFFER = 5000;  // Extra 5s buffer
+```
+
+This prevents edge cases where the rate limit resets just as a request is made.
+
+## Advanced: Custom Rate Limiter
+
+You can programmatically configure the rate limiter if using the CLI as a library:
+
+```typescript
+import { getRateLimiter } from './utils/rateLimiter.js';
+
+const limiter = getRateLimiter({
+  maxPerMinute: 10,     // Reduce to 10 operations/min
+  maxConcurrent: 1,     // Only 1 concurrent operation
+  backoffBaseMs: 2000,  // 2-second base for backoff
+});
+
+// Check status
+const stats = limiter.getStats();
+console.log(`${stats.available} slots available`);
+```
+
+## See Also
+
+- [Concurrency Control](/cli/concurrency) - Managing parallel operations
+- [Configuration](/configuration) - All environment variables
+- [GitHub Rate Limit Documentation](https://docs.github.com/en/rest/overview/rate-limits-for-the-rest-api)

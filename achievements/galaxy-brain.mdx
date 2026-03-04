@@ -1,0 +1,193 @@
+---
+title: Galaxy Brain
+description: Earn the Galaxy Brain achievement by answering discussions with accepted answers
+---
+
+The **Galaxy Brain** achievement is earned by providing accepted answers to GitHub Discussions. This achievement requires a helper account to create the discussions.
+
+## Achievement Details
+
+| Property | Value |
+|----------|-------|
+| **Achievement ID** | `galaxy-brain` |
+| **Icon** | 🧠 |
+| **Description** | Answered discussions (requires helper account) |
+| **Helper Account** | **Required** |
+
+<Warning>
+  This achievement **requires a second GitHub account** (helper account) to function. The helper creates discussions that you answer.
+</Warning>
+
+## Tiers
+
+<CardGroup cols={2}>
+  <Card title="Default Tier" icon="trophy">
+    **2** accepted answers
+  </Card>
+  <Card title="Bronze Tier" icon="medal">
+    **8** accepted answers
+  </Card>
+  <Card title="Silver Tier" icon="medal">
+    **16** accepted answers
+  </Card>
+  <Card title="Gold Tier" icon="medal">
+    **32** accepted answers
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+### 1. Enable Discussions
+
+Your target repository must have Discussions enabled:
+
+1. Go to repository **Settings**
+2. Scroll to **Features** section
+3. Enable **Discussions**
+
+<Info>
+  The tool automatically checks if discussions are enabled before running this achievement.
+</Info>
+
+### 2. Helper Account Setup
+
+Configure your helper account token in `.env`:
+
+```env
+GITHUB_TOKEN=ghp_your_main_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+
+# Helper account (required for Galaxy Brain)
+HELPER_TOKEN=ghp_your_helper_token_here
+```
+
+<Note>
+  The helper account should have read/write access to your target repository's discussions.
+</Note>
+
+## How It Works
+
+The automation uses both your main account and the helper account:
+
+1. **Helper creates discussion** - Opens a new discussion question
+2. **You post answer** - Main account posts a detailed answer
+3. **Helper marks answer as accepted** - Marks your answer as the accepted solution
+4. **Achievement triggers** - GitHub recognizes the accepted answer
+
+<Info>
+  Each accepted answer increments your Galaxy Brain achievement count.
+</Info>
+
+## Implementation Details
+
+The achievement class checks if discussions are enabled (from `src/achievements/galaxyBrain.ts:26-34`):
+
+```typescript
+private async checkDiscussions(): Promise<void> {
+  if (this.discussionsEnabled === null) {
+    this.discussionsEnabled = await areDiscussionsEnabled(this.owner, this.repo);
+    
+    if (!this.discussionsEnabled) {
+      throw new DiscussionsNotEnabledError(`${this.owner}/${this.repo}`);
+    }
+  }
+}
+```
+
+The main operation (from `src/achievements/galaxyBrain.ts:36-51`):
+
+```typescript
+protected async executeOperation(number: number): Promise<{
+  discussionId?: string;
+}> {
+  await this.checkDiscussions();
+  
+  logger.debug(`Creating Galaxy Brain discussion #${number}`);
+  
+  // Create a discussion with an accepted answer
+  const discussion = await createGalaxyBrainDiscussion(this.owner, this.repo, number);
+  
+  logger.verbose(`Completed Galaxy Brain #${number} (Discussion #${discussion.number})`);
+  
+  return {
+    discussionId: discussion.id,
+  };
+}
+```
+
+## Workflow Example
+
+Here's what happens when you run Galaxy Brain for Default tier (2 answers):
+
+```
+✓ Check discussions enabled in repository
+✓ Helper account creates discussion "Question #1"
+✓ Main account posts answer
+✓ Helper account marks answer as accepted
+✓ Discussion #1 completed
+
+✓ Helper account creates discussion "Question #2"
+✓ Main account posts answer
+✓ Helper account marks answer as accepted
+✓ Discussion #2 completed
+```
+
+## Error Handling
+
+If discussions are not enabled, you'll see:
+
+```
+❌ Error: Discussions are not enabled for owner/repo
+
+Please enable Discussions in your repository settings:
+1. Go to Settings → Features
+2. Enable Discussions
+3. Try again
+```
+
+## Estimated Time
+
+From the achievement definition in `src/achievements/index.ts:52`:
+
+- **Estimated time per unit**: 4000ms (4 seconds)
+- **Default tier (2)**: ~8 seconds
+- **Bronze tier (8)**: ~32 seconds
+- **Silver tier (16)**: ~64 seconds
+- **Gold tier (32)**: ~128 seconds (~2 minutes)
+
+<Info>
+  Discussions operations use GitHub's GraphQL API, which has separate rate limits from the REST API.
+</Info>
+
+## Cleanup Considerations
+
+<Warning>
+  Unlike branches and PRs, discussions remain in your repository after completion.
+</Warning>
+
+After earning Galaxy Brain, you may want to:
+
+1. **Archive discussions** - Manually archive or lock the automated discussions
+2. **Label them** - Add a label like "automation" to identify them
+3. **Keep them** - Leave them as documentation of your achievement process
+
+## Comparison with Other Achievements
+
+| Feature | Galaxy Brain | Pull Shark | YOLO |
+|---------|-------------|-----------|------|
+| **Helper account** | Required | Not required | Required |
+| **Repository feature** | Discussions | PRs | PRs |
+| **Cleanup** | Manual | Automatic | Automatic |
+| **Gold tier** | 32 | 1024 | N/A (single tier) |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="YOLO" icon="dice" href="/achievements/yolo">
+    Another achievement that requires a helper account
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Learn how to set up your helper account
+  </Card>
+</CardGroup>

@@ -1,0 +1,107 @@
+---
+title: Achievements Overview
+description: Complete guide to all GitHub achievements supported by Achievement CLI
+---
+
+GitHub Achievement CLI automates earning profile achievements through automated workflows. The tool supports 5 different achievements with varying difficulty tiers.
+
+## Supported Achievements
+
+<CardGroup cols={2}>
+  <Card title="Pair Extraordinaire" icon="users" href="/achievements/pair-extraordinaire">
+    Coauthored commits on merged PRs
+  </Card>
+  <Card title="Pull Shark" icon="code-pull-request" href="/achievements/pull-shark">
+    Merged pull requests
+  </Card>
+  <Card title="Galaxy Brain" icon="brain" href="/achievements/galaxy-brain">
+    Accepted answers in Discussions
+  </Card>
+  <Card title="Quickdraw" icon="bolt" href="/achievements/quickdraw">
+    Close issue within 5 minutes of opening
+  </Card>
+  <Card title="YOLO" icon="dice" href="/achievements/yolo">
+    Merge PR without code review
+  </Card>
+</CardGroup>
+
+## Achievement Tiers
+
+| Achievement | Default | Bronze | Silver | Gold | Helper Required |
+|-------------|---------|--------|--------|------|----------------|
+| **Pair Extraordinaire** | 1 | 10 | 24 | 48 | No |
+| **Pull Shark** | 2 | 16 | 128 | 1024 | No |
+| **Galaxy Brain** | 2 | 8 | 16 | 32 | Yes |
+| **Quickdraw** | 1 | - | - | - | No |
+| **YOLO** | 1 | - | - | - | Yes |
+
+<Note>
+  Tier numbers represent the **count required** to unlock that tier. For example, Pull Shark Gold requires 1024 merged pull requests.
+</Note>
+
+## Helper Account Requirements
+
+<Warning>
+  **Galaxy Brain** and **YOLO** achievements require a second GitHub account (helper account) to function properly.
+</Warning>
+
+These achievements need a helper account because:
+
+- **Galaxy Brain**: Helper account creates discussions that you answer and mark as accepted
+- **YOLO**: Helper account is listed as a requested reviewer, then you merge without waiting for their review
+
+Configure your helper account token in `.env`:
+
+```env
+HELPER_TOKEN=ghp_your_helper_account_token_here
+```
+
+## How Achievements Work
+
+Each achievement uses a specific automation workflow:
+
+1. **Creates operations** - Branches, commits, PRs, issues, or discussions
+2. **Executes actions** - Merges, closes, answers, or reviews
+3. **Triggers GitHub's detection** - GitHub's backend recognizes the achievement pattern
+4. **Cleans up** - Removes temporary branches and resources
+
+<Info>
+  The tool respects GitHub rate limits with 2 concurrent operations and 15 operations per minute.
+</Info>
+
+## Progress Tracking
+
+Progress is tracked locally per GitHub account in:
+
+```
+~/.github-achievements/<username>/
+```
+
+You can view your current progress using the CLI:
+
+```bash
+npm start
+# Select "View Status"
+```
+
+## Repository Cleanup
+
+<Warning>
+  Running achievements creates many commits and PRs in your target repository.
+</Warning>
+
+After completing achievements, you can clean up:
+
+1. **Reset Repo History** - Use the CLI menu option to squash all commits into one
+2. **Delete PR History** - Delete and recreate the repository to remove PRs from your profile
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Set up tokens and repository settings
+  </Card>
+  <Card title="Usage Guide" icon="rocket" href="/guides/running-achievements">
+    Learn how to run achievements
+  </Card>
+</CardGroup>

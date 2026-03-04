@@ -1,0 +1,297 @@
+---
+title: Helper Account Setup
+description: Learn how to set up a helper GitHub account for Galaxy Brain and YOLO achievements
+---
+
+Some achievements require a second GitHub account called a "helper account" to interact with your main account. This guide explains why it's needed and how to set it up.
+
+## Why a Helper Account?
+
+Two achievements require interactions from another GitHub user:
+
+### Galaxy Brain
+
+This achievement requires **accepted answers in GitHub Discussions**. To earn it:
+1. Someone posts a question in a discussion
+2. You post an answer
+3. **The original question author must mark your answer as accepted**
+
+Since you can't mark your own answer as accepted, you need a helper account to ask the questions and mark your answers.
+
+### YOLO
+
+This achievement requires **merging a PR without code review**. The requirement:
+- You must merge a PR on a repository where **pull request reviews are required**
+- But GitHub doesn't count self-merging as "YOLO"
+- The PR must be opened by someone else (the helper account)
+
+So the helper account opens PRs, and you merge them without review.
+
+<Note>
+  Without a helper account, you can still earn **Pair Extraordinaire**, **Pull Shark**, and **Quickdraw**. Galaxy Brain and YOLO are optional.
+</Note>
+
+## Creating a Helper Account
+
+<Steps>
+  <Step title="Create a new GitHub account">
+    1. Log out of your main GitHub account
+    2. Go to [github.com/signup](https://github.com/signup)
+    3. Create a new account with a different email address
+    4. Choose a simple username (e.g., `your-username-helper`)
+    5. Complete the signup process
+    
+    <Tip>
+      You can use Gmail's `+` addressing: `youremail+helper@gmail.com` counts as a different email but delivers to your main inbox.
+    </Tip>
+  </Step>
+
+  <Step title="Verify the email address">
+    GitHub requires verified email addresses for most API operations. Check your email and click the verification link.
+  </Step>
+
+  <Step title="Generate a Personal Access Token">
+    1. While logged in as the helper account, go to [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+    2. Click **Generate new token** → **Generate new token (classic)**
+    3. Give it a descriptive name: `Achievement CLI Helper`
+    4. Set expiration: Choose based on your needs (30 days, 60 days, or no expiration)
+    5. Select scopes:
+       - ✅ `repo` (Full control of private repositories)
+       - ✅ `write:discussion` (Write access to discussions)
+    6. Click **Generate token**
+    7. **Copy the token immediately** - you won't be able to see it again!
+  </Step>
+
+  <Step title="Add helper token to .env">
+    Open your `.env` file in the project root and add:
+    
+    ```env
+    HELPER_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+    
+    Replace `ghp_xxx...` with the token you just copied.
+  </Step>
+</Steps>
+
+<Warning>
+  Keep both tokens secure! Never commit your `.env` file to version control or share tokens publicly. They provide full access to your repositories.
+</Warning>
+
+## Configuration File Setup
+
+Your complete `.env` file should look like this:
+
+```env
+# Main account credentials
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_USERNAME=your-main-username
+TARGET_REPO=your-main-username/your-repo
+
+# Helper account credentials (for Galaxy Brain and YOLO)
+HELPER_TOKEN=ghp_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+```
+
+### Token Scopes Required
+
+| Token | Required Scopes | Used For |
+|-------|----------------|----------|
+| `GITHUB_TOKEN` | `repo` | Creating branches, commits, PRs, merging, issues, discussions |
+| `HELPER_TOKEN` | `repo`, `write:discussion` | Opening PRs (YOLO), asking questions in discussions (Galaxy Brain) |
+
+## Verifying Helper Account Setup
+
+After adding the helper token, verify it's working:
+
+<Steps>
+  <Step title="Restart the CLI">
+    ```bash
+    npm start
+    ```
+  </Step>
+
+  <Step title="Check the status display">
+    On the main menu, you should see:
+    
+    ```
+    ✓ Helper account configured (Galaxy Brain/YOLO ready)
+    ```
+    
+    If you see this message, your helper account is properly configured!
+  </Step>
+
+  <Step title="Try a helper-required achievement">
+    Select **Run Achievements** and choose either:
+    - **Galaxy Brain** - Any tier
+    - **YOLO** - Default tier
+    
+    If the helper token is invalid or missing, you'll see an error message.
+  </Step>
+</Steps>
+
+## Helper Account Requirements
+
+The helper account needs:
+
+### For Galaxy Brain
+
+1. **Access to the target repository** (if private)
+   - Invite the helper account as a collaborator
+   - Settings > Collaborators and teams > Add people
+   - Enter the helper account username
+
+2. **Discussions enabled on the repository**
+   - Settings > Features > ✅ Discussions
+
+### For YOLO
+
+1. **Write access to the target repository**
+   - Same as above: Add as a collaborator
+
+2. **No special branch protection required**
+   - YOLO works on repositories with or without branch protection
+
+<Note>
+  If your target repository is public, the helper account doesn't need to be added as a collaborator. It can interact with public discussions and open PRs on any public repository.
+</Note>
+
+## Adding Helper as Collaborator
+
+If your target repository is private:
+
+<Steps>
+  <Step title="Go to repository settings">
+    Navigate to your target repository on GitHub and click **Settings**.
+  </Step>
+
+  <Step title="Open collaborators settings">
+    In the left sidebar, click **Collaborators and teams**.
+  </Step>
+
+  <Step title="Add the helper account">
+    1. Click **Add people**
+    2. Enter your helper account's username
+    3. Select the helper account from the dropdown
+    4. Choose permission level: **Write** (required for creating discussions and PRs)
+    5. Click **Add [username] to this repository**
+  </Step>
+
+  <Step title="Helper accepts invitation">
+    1. Log in as the helper account
+    2. Check notifications or email
+    3. Accept the repository invitation
+  </Step>
+</Steps>
+
+## Troubleshooting Helper Account Issues
+
+### "Helper token not configured"
+
+**Problem**: The CLI can't find `HELPER_TOKEN` in your `.env` file.  
+**Solution**: 
+1. Open `.env` in the project root
+2. Add `HELPER_TOKEN=ghp_xxx...` with your helper's token
+3. Restart the CLI
+
+### "Bad credentials" error for helper
+
+**Problem**: The helper token is invalid or expired.  
+**Solution**:
+1. Log in to GitHub as the helper account
+2. Go to [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+3. Generate a new token with `repo` and `write:discussion` scopes
+4. Update `HELPER_TOKEN` in `.env`
+
+### "Resource not accessible by integration"
+
+**Problem**: The helper account lacks permissions for the operation.  
+**Solution**:
+1. Verify the helper account is a collaborator on the repository (if private)
+2. Check the token has the correct scopes: `repo` and `write:discussion`
+3. Regenerate the token if necessary
+
+### "Discussions are not enabled"
+
+**Problem**: Galaxy Brain requires discussions, but they're not enabled on your repository.  
+**Solution**:
+1. Go to your repository on GitHub
+2. Settings > Features
+3. Check ✅ **Discussions**
+4. Wait a moment for the feature to activate
+5. Try again
+
+See the [Troubleshooting guide](/guides/troubleshooting) for more error solutions.
+
+## Security Best Practices
+
+<Warning>
+  Both your main token and helper token have full repository access. Treat them like passwords!
+</Warning>
+
+### Token Security
+
+1. **Never commit tokens to Git**
+   - The `.env` file should be in `.gitignore`
+   - Never push tokens to GitHub or any other service
+
+2. **Use token expiration**
+   - Set tokens to expire after 30-60 days
+   - Regenerate tokens periodically
+
+3. **Revoke unused tokens**
+   - After earning achievements, you can revoke both tokens
+   - [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+   - Click the token, then **Delete** at the bottom
+
+4. **Use a dedicated repository**
+   - Create a test repository specifically for earning achievements
+   - Don't use a repository with important code or data
+   - This limits potential damage if tokens are compromised
+
+### Helper Account Security
+
+1. **Use a strong password** - Even though it's a helper account, secure it properly
+2. **Enable 2FA** (optional) - For extra security, though it's not required for this use case
+3. **Don't use for other purposes** - Keep this account dedicated to helping with achievements
+
+## Alternative: Multiple Main Accounts
+
+Instead of a helper account, you can use two main accounts and help each other:
+
+1. **Alice's main account** + **Bob's main account**
+2. Alice acts as Bob's helper, Bob acts as Alice's helper
+3. Both can earn Galaxy Brain and YOLO
+
+This approach:
+- ✅ No need to create a throwaway account
+- ✅ Both accounts earn achievements
+- ❌ Requires coordinating with another person
+- ❌ Both people need to set up the CLI
+
+## Cleaning Up After Completion
+
+Once you've earned Galaxy Brain and YOLO:
+
+<Steps>
+  <Step title="Revoke the helper token">
+    1. Log in as the helper account
+    2. Go to [Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+    3. Find the "Achievement CLI Helper" token
+    4. Click **Delete**
+  </Step>
+
+  <Step title="Remove from collaborators (optional)">
+    If you added the helper as a collaborator:
+    1. Go to your repository settings
+    2. Collaborators and teams
+    3. Remove the helper account
+  </Step>
+
+  <Step title="Keep or delete the helper account">
+    - **Keep**: You can use it to help earn achievements on other repositories
+    - **Delete**: Go to [Settings > Account](https://github.com/settings/admin) and delete the account
+  </Step>
+</Steps>
+
+<Tip>
+  You might want to keep the helper account around in case you want to earn achievements on another repository or help a friend earn theirs!
+</Tip>

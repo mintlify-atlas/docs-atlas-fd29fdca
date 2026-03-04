@@ -1,0 +1,176 @@
+---
+title: Interactive Menu
+description: Complete reference for the GitHub Achievement CLI main menu and operations
+---
+
+## Main Menu
+
+After completing initial setup, the main menu displays your current configuration and available operations.
+
+### Menu Screen Layout
+
+```
+GitHub Achievement CLI
+
+Logged in as username
+Target: owner/repository-name
+✓ Helper account configured (Galaxy Brain/YOLO ready)
+
+What would you like to do?
+  Run Achievements
+  View Status
+  List Achievements
+  Reconfigure
+  Reset Repo History
+  Exit
+
+Use ↑↓ to navigate, Enter to select
+```
+
+## Menu Options
+
+The menu provides six core operations defined in `src/app/screens/MenuScreen.tsx:23-54`:
+
+### Run Achievements
+
+**Action**: `'run'`  
+**Description**: Select and execute achievement automation
+
+Navigates to the achievement selection screen where you can:
+- Browse all available achievements
+- Select multiple achievements to run
+- Choose specific tiers for tiered achievements
+- Execute the selected automations
+
+The selection screen adapts based on your configuration:
+- Shows only available achievements based on helper account status
+- Indicates which achievements require Discussions
+- Displays tier options (Bronze, Silver, Gold) for applicable achievements
+
+### View Status
+
+**Action**: `'status'`  
+**Description**: Check progress on current achievements
+
+Displays the current state of your achievement progress:
+- Lists all achievements you've started
+- Shows completion percentage for each
+- Indicates which achievements are complete
+- Displays the database of tracked activities
+
+Useful for monitoring long-running automations or checking what's been completed.
+
+### List Achievements
+
+**Action**: `'list'`  
+**Description**: See all available achievements and tiers
+
+Browse the complete catalog of supported achievements:
+- View all achievement names and descriptions
+- See tier options (Bronze/Silver/Gold) where applicable
+- Understand requirements (e.g., "Requires Discussions")
+- Learn what each achievement unlocks
+
+Achievements requiring a helper account are clearly marked. If Discussions aren't enabled on your target repository, discussion-based achievements show as unavailable.
+
+### Reconfigure
+
+**Action**: `'setup'`  
+**Description**: Change settings and tokens
+
+Re-enters the setup wizard to modify your configuration:
+- Update GitHub Personal Access Token
+- Change target repository
+- Add or remove helper account
+- Reconfigure language settings
+
+This clears the cached configuration (`src/app/App.tsx:169`) and restarts the setup flow. Your `.env` file will be overwritten with new values.
+
+### Reset Repo History
+
+**Action**: `'reset-history'`  
+**Description**: Squash all commits into one clean commit
+
+Performs a repository cleanup operation:
+- Squashes all commits in the target repository into a single commit
+- Cleans up achievement-related branches
+- Removes automation artifacts
+- Creates a fresh starting point
+
+**Warning**: This operation rewrites git history. It should only be used on repositories created specifically for achievements, never on production repositories.
+
+### Exit
+
+**Action**: `'exit'`  
+**Description**: Goodbye!
+
+Cleanly exits the application. Also accessible by pressing `Ctrl+C` at any time.
+
+## Menu State
+
+The menu displays contextual information from your configuration:
+
+### User Information
+
+```tsx
+Logged in as username
+```
+
+Shows the GitHub username associated with your Personal Access Token (from `src/app/App.tsx:69`).
+
+### Target Repository
+
+```tsx
+Target: owner/repo
+```
+
+Displays the repository where achievements will be created.
+
+### Helper Account Status
+
+```tsx
+✓ Helper account configured (Galaxy Brain/YOLO ready)
+```
+
+Appears only when a helper account token is configured (`src/app/screens/MenuScreen.tsx:77-82`). Indicates you can run achievements that require a second account:
+- **Galaxy Brain**: Answer questions in Discussions
+- **YOLO**: Merge pull requests without review
+
+## Navigation Flow
+
+The menu acts as a central hub. The application flow (`src/app/App.tsx:157-179`) routes to different screens:
+
+```tsx
+switch (action) {
+  case 'run':
+    setScreen('select');  // Achievement selection
+    break;
+  case 'status':
+    setScreen('status');  // Progress view
+    break;
+  case 'list':
+    setScreen('list');    // Achievement catalog
+    break;
+  case 'setup':
+    setScreen('setup');   // Configuration wizard
+    break;
+  case 'reset-history':
+    setScreen('reset-history');  // Cleanup screen
+    break;
+  case 'exit':
+    exit();  // Terminate application
+    break;
+}
+```
+
+All screens provide a way to return to the main menu, creating a cyclical navigation pattern.
+
+## Controls Reminder
+
+The menu footer always displays navigation help:
+
+```
+Use ↑↓ to navigate, Enter to select
+```
+
+This appears on all screens to remind users of the consistent control scheme.

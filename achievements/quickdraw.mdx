@@ -1,0 +1,181 @@
+---
+title: Quickdraw
+description: Earn the Quickdraw achievement by closing an issue within 5 minutes of opening
+---
+
+The **Quickdraw** achievement is earned by closing an issue within 5 minutes of opening it. This is one of the simplest achievements with only a single tier.
+
+## Achievement Details
+
+| Property | Value |
+|----------|-------|
+| **Achievement ID** | `quickdraw` |
+| **Icon** | 🤠 |
+| **Description** | Closed an issue within 5 minutes of opening |
+| **Helper Account** | Not required |
+| **Tiers** | Single tier only |
+
+## Tier
+
+<Card title="Default Tier" icon="trophy">
+  **1** issue closed within 5 minutes
+</Card>
+
+<Info>
+  Quickdraw has only one tier. Once you close one issue quickly, you earn the achievement.
+</Info>
+
+## How It Works
+
+The automation creates and immediately closes an issue:
+
+1. **Opens an issue** - Creates a new issue in your repository
+2. **Immediately closes it** - Closes the issue within milliseconds
+3. **Achievement triggers** - GitHub recognizes the quick close
+
+<Note>
+  The tool closes the issue much faster than 5 minutes (within 1 second), ensuring the achievement triggers reliably.
+</Note>
+
+## Configuration
+
+Minimal configuration required in `.env`:
+
+```env
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+```
+
+No special configuration needed - this is the simplest achievement to set up.
+
+## Implementation Details
+
+From `src/achievements/quickdraw.ts:20-33`:
+
+```typescript
+protected async executeOperation(number: number): Promise<{
+  issueNumber?: number;
+}> {
+  logger.debug(`Creating Quickdraw issue #${number}`);
+  
+  // Create and immediately close an issue
+  const issue = await createQuickdrawIssue(this.owner, this.repo, number);
+  
+  logger.verbose(`Completed Quickdraw #${number} (Issue #${issue.number})`);
+  
+  return {
+    issueNumber: issue.number,
+  };
+}
+```
+
+<Info>
+  The `createQuickdrawIssue` function handles both creating and closing the issue in a single operation.
+</Info>
+
+## Workflow Example
+
+Here's what happens when you run Quickdraw:
+
+```
+✓ Open issue #42: "Quickdraw Issue #1"
+✓ Close issue #42 immediately
+✓ Quickdraw achievement earned!
+```
+
+The entire process takes less than 2 seconds.
+
+## Issue Content
+
+The created issue includes:
+
+- **Title**: Identifies it as a Quickdraw achievement issue
+- **Body**: Explains the purpose of the issue
+- **Labels**: May include automated labels (if configured)
+- **Status**: Closed immediately after creation
+
+## Cleanup
+
+<Note>
+  The closed issue remains in your repository's issue history. Since Quickdraw only creates 1 issue, cleanup is not a major concern.
+</Note>
+
+If you want to remove the issue:
+
+1. You can manually delete the issue from the GitHub web interface
+2. Or keep it as a record of your achievement
+
+## Estimated Time
+
+From the achievement definition in `src/achievements/index.ts:62`:
+
+- **Estimated time per unit**: 2000ms (2 seconds)
+- **Total time**: ~2 seconds (single tier)
+
+<Info>
+  This is the fastest achievement to earn, taking only a couple of seconds to complete.
+</Info>
+
+## Why It's Fast
+
+Quickdraw is intentionally simple:
+
+- ✅ Single tier only (no Bronze/Silver/Gold)
+- ✅ No helper account needed
+- ✅ No branch creation or PR merging
+- ✅ No discussions or coauthors
+- ✅ Just one API call to create and one to close
+
+## Common Use Cases
+
+1. **Testing the tool** - Use Quickdraw to verify your configuration works
+2. **Quick win** - Earn an achievement badge in seconds
+3. **Demonstration** - Show how the tool works without creating much history
+
+## Comparison with Other Achievements
+
+| Feature | Quickdraw | YOLO | Pull Shark |
+|---------|-----------|------|------------|
+| **Tiers** | 1 | 1 | 4 (Default, Bronze, Silver, Gold) |
+| **Time** | ~2 seconds | ~5 seconds | ~10 seconds to ~85 minutes |
+| **Helper account** | No | Yes | No |
+| **Cleanup needed** | Minimal (1 issue) | Yes (1 PR) | Yes (2-1024 PRs) |
+| **Complexity** | Simplest | Simple | Medium to High |
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test First" icon="flask">
+    Run Quickdraw first to verify your GitHub token and repository access work correctly.
+  </Card>
+  <Card title="Keep the Issue" icon="bookmark">
+    The single closed issue serves as documentation that you've used the tool.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+If Quickdraw fails:
+
+1. **Check token permissions** - Ensure your token has `repo` scope
+2. **Verify repository** - Confirm you own the target repository
+3. **Check rate limits** - Though unlikely with just one issue
+
+```bash
+# Test your configuration
+npm start
+# Select "List Achievements" to see available options
+# Select "Run Achievements" → "Quickdraw"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="YOLO" icon="dice" href="/achievements/yolo">
+    Another single-tier achievement (requires helper account)
+  </Card>
+  <Card title="Pull Shark" icon="code-pull-request" href="/achievements/pull-shark">
+    Multi-tier achievement for more serious badge hunting
+  </Card>
+</CardGroup>

@@ -1,0 +1,415 @@
+---
+title: 'Environment Variables'
+description: 'Complete reference for all configuration options in GitHub Achievement CLI'
+---
+
+## Overview
+
+GitHub Achievement CLI is configured through environment variables in a `.env` file. This file is created automatically during [initial setup](/configuration/setup) but can be edited manually.
+
+All configuration is loaded from the `.env` file in your project root directory.
+
+## Required Settings
+
+These variables must be set for the CLI to function:
+
+<ParamField path="GITHUB_TOKEN" type="string" required>
+  Your GitHub Personal Access Token for the main account.
+  
+  - **Format**: Must start with `ghp_` or `github_pat_`
+  - **Required scope**: `repo` (full control of private repositories)
+  - **Generate at**: [https://github.com/settings/tokens](https://github.com/settings/tokens)
+  
+  ```env
+  GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  ```
+  
+  <Warning>
+    Keep this token secure. Never commit it to version control or share it publicly.
+  </Warning>
+</ParamField>
+
+<ParamField path="GITHUB_USERNAME" type="string" required>
+  Your GitHub username (main account).
+  
+  - **Auto-populated**: During setup wizard from token authentication
+  - **Format**: Your GitHub login name
+  
+  ```env
+  GITHUB_USERNAME=your-username
+  ```
+  
+  <Note>
+    This value is automatically detected when you provide your token during setup.
+  </Note>
+</ParamField>
+
+<ParamField path="TARGET_REPO" type="string" required>
+  Target repository where achievements will be created.
+  
+  - **Format**: `owner/repo` (e.g., `myusername/GitHub-Achievements-Manager`)
+  - **Requirements**: You must have write access to this repository
+  - **Purpose**: All branches, PRs, issues, and commits are created here
+  
+  ```env
+  TARGET_REPO=your-username/your-repo
+  ```
+  
+  <Warning>
+    Achievement progress is tracked per-repository. Changing this value resets your progress.
+  </Warning>
+</ParamField>
+
+## Optional Settings
+
+These variables customize the CLI behavior:
+
+<ParamField path="COAUTHOR_NAME" type="string" default="n0">
+  Coauthor name for Pair Extraordinaire achievement commits.
+  
+  - **Used in**: Commit messages for Pair Extraordinaire achievement
+  - **Format**: `Co-authored-by: NAME <EMAIL>`
+  - **Default**: `n0`
+  
+  ```env
+  COAUTHOR_NAME=n0
+  ```
+</ParamField>
+
+<ParamField path="COAUTHOR_EMAIL" type="string" default="luke@u.software">
+  Coauthor email for Pair Extraordinaire achievement commits.
+  
+  - **Used in**: Commit messages alongside `COAUTHOR_NAME`
+  - **Validation**: Must be a valid email format (contains `@`)
+  - **Default**: `luke@u.software`
+  
+  ```env
+  COAUTHOR_EMAIL=luke@u.software
+  ```
+  
+  <Note>
+    Commits appear as: `Co-authored-by: n0 <luke@u.software>`
+  </Note>
+</ParamField>
+
+<ParamField path="BRANCH_PREFIX" type="string" default="achievement">
+  Prefix for created branches.
+  
+  - **Format**: Branch names will be `{PREFIX}/{achievement-type}-{number}`
+  - **Example**: `achievement/pull-shark-1`, `achievement/pair-extraordinaire-5`
+  - **Default**: `achievement`
+  
+  ```env
+  BRANCH_PREFIX=achievement
+  ```
+</ParamField>
+
+<ParamField path="DELAY_MS" type="number" default="1000">
+  Delay between operations in milliseconds.
+  
+  - **Purpose**: Prevents rate limiting and ensures API stability
+  - **Range**: Minimum 0, recommended 500-2000
+  - **Default**: `1000` (1 second)
+  - **Increase if**: You're hitting rate limits
+  
+  ```env
+  DELAY_MS=1000
+  ```
+  
+  <Note>
+    Lower values execute faster but increase risk of rate limiting. Higher values are safer but slower.
+  </Note>
+</ParamField>
+
+## Advanced Settings
+
+These variables control internal behavior and debugging:
+
+<ParamField path="VERBOSE" type="boolean" default="false">
+  Enable verbose logging output.
+  
+  - **Values**: `true` or `false`
+  - **When enabled**: Shows detailed API calls and internal operations
+  - **Default**: `false`
+  
+  ```env
+  VERBOSE=false
+  ```
+</ParamField>
+
+<ParamField path="TEST_MODE" type="boolean" default="false">
+  Enable test/dry-run mode.
+  
+  - **Values**: `true` or `false`
+  - **When enabled**: Shows what would happen without actually executing operations
+  - **Default**: `false`
+  - **Use case**: Preview changes before execution
+  
+  ```env
+  TEST_MODE=false
+  ```
+  
+  <Warning>
+    In test mode, no actual GitHub operations are performed. No achievements will be earned.
+  </Warning>
+</ParamField>
+
+<ParamField path="BATCH_SIZE" type="number" default="5">
+  Number of parallel operations in a batch.
+  
+  - **Purpose**: Controls parallelization of API requests
+  - **Range**: Minimum 1, recommended 3-10
+  - **Default**: `5`
+  - **Impact**: Higher values = faster execution but more API load
+  
+  ```env
+  BATCH_SIZE=5
+  ```
+</ParamField>
+
+<ParamField path="LOG_LEVEL" type="string" default="info">
+  Logging verbosity level.
+  
+  - **Values**: `debug`, `info`, `warn`, `error`
+  - **Default**: `info`
+  - **debug**: Most verbose, shows all operations
+  - **info**: Normal operation logs
+  - **warn**: Only warnings and errors
+  - **error**: Only errors
+  
+  ```env
+  LOG_LEVEL=info
+  ```
+</ParamField>
+
+<ParamField path="CONCURRENCY" type="number" default="2">
+  Number of parallel operations allowed simultaneously.
+  
+  - **Purpose**: Limits concurrent API calls
+  - **Default**: `2` (2 parallel operations = ~10 concurrent API calls)
+  - **Rate limit context**: Each operation makes ~5 API calls
+  - **GitHub limit**: 80 content-creating requests/minute
+  
+  ```env
+  CONCURRENCY=2
+  ```
+  
+  <Note>
+    This is configured automatically to stay under GitHub's rate limits. Only change if you understand the implications.
+  </Note>
+</ParamField>
+
+<ParamField path="MAX_REQUESTS_PER_MINUTE" type="number" default="15">
+  Maximum operations per minute.
+  
+  - **Purpose**: Rate limiting to stay within GitHub's API limits
+  - **Default**: `15` operations/minute (75 API calls, under 80 limit)
+  - **Calculation**: Each operation × 5 API calls = total API calls/minute
+  
+  ```env
+  MAX_REQUESTS_PER_MINUTE=15
+  ```
+  
+  <Warning>
+    Setting this too high may cause GitHub to rate limit your requests, resulting in errors and delays.
+  </Warning>
+</ParamField>
+
+## Galaxy Brain / YOLO Settings
+
+These variables enable achievements that require a helper account:
+
+<ParamField path="HELPER_TOKEN" type="string">
+  GitHub Personal Access Token from a **second GitHub account**.
+  
+  - **Required for**: Galaxy Brain and YOLO achievements
+  - **Format**: Must start with `ghp_` or `github_pat_`
+  - **Required scopes**: `repo`, `write:discussion`
+  - **Important**: Must be from a **different** account than `GITHUB_TOKEN`
+  - **Generate at**: [https://github.com/settings/tokens](https://github.com/settings/tokens) (logged into helper account)
+  
+  ```env
+  HELPER_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  ```
+  
+  <Note>
+    The helper account should be added as a collaborator on your target repository with write access.
+  </Note>
+</ParamField>
+
+<ParamField path="HELPER_USERNAME" type="string">
+  Username of the helper account.
+  
+  - **Auto-detected**: From `HELPER_TOKEN` during setup
+  - **Purpose**: Internal tracking of helper account operations
+  
+  ```env
+  HELPER_USERNAME=helper-account-name
+  ```
+</ParamField>
+
+## How Helper Account Works
+
+<Steps>
+  <Step title="Galaxy Brain Achievement">
+    1. **Helper account** creates a discussion question in your repository
+    2. **Main account** answers the question
+    3. **Helper account** marks your answer as accepted
+    4. Achievement unlocked!
+  </Step>
+  
+  <Step title="YOLO Achievement">
+    1. **Main account** creates a pull request
+    2. Pull request is merged **without** any code review
+    3. Achievement unlocked!
+    
+    <Note>
+      Helper account ensures the PR isn't accidentally reviewed before merge.
+    </Note>
+  </Step>
+</Steps>
+
+## Configuration File Location
+
+The `.env` file must be in your project root:
+
+```
+GitHub-Achievement-CLI/
+├── .env              ← Configuration file
+├── src/
+├── package.json
+└── ...
+```
+
+## Example Complete Configuration
+
+Here's a complete `.env` file with all available options:
+
+```env
+# ===========================================
+# REQUIRED SETTINGS
+# ===========================================
+
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_USERNAME=myusername
+TARGET_REPO=myusername/GitHub-Achievements-Manager
+
+# ===========================================
+# OPTIONAL SETTINGS
+# ===========================================
+
+COAUTHOR_NAME=n0
+COAUTHOR_EMAIL=luke@u.software
+BRANCH_PREFIX=achievement
+DELAY_MS=1000
+
+# ===========================================
+# ADVANCED SETTINGS
+# ===========================================
+
+VERBOSE=false
+TEST_MODE=false
+BATCH_SIZE=5
+LOG_LEVEL=info
+CONCURRENCY=2
+MAX_REQUESTS_PER_MINUTE=15
+
+# ===========================================
+# GALAXY BRAIN / YOLO (OPTIONAL)
+# ===========================================
+
+HELPER_TOKEN=ghp_yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+HELPER_USERNAME=my-helper-account
+```
+
+## Updating Configuration
+
+You can update configuration in three ways:
+
+<Tabs>
+  <Tab title="CLI Menu">
+    Use the **Reconfigure** option from the main menu:
+    
+    ```bash
+    npm start
+    # Select: Reconfigure
+    ```
+    
+    This runs the setup wizard again and overwrites your `.env` file.
+  </Tab>
+  
+  <Tab title="Manual Edit">
+    Edit the `.env` file directly:
+    
+    ```bash
+    nano .env
+    # or
+    code .env
+    ```
+    
+    Changes take effect the next time you run the CLI.
+  </Tab>
+  
+  <Tab title="Delete and Recreate">
+    Remove the `.env` file to restart setup:
+    
+    ```bash
+    rm .env
+    npm start
+    ```
+    
+    The setup wizard will run automatically.
+  </Tab>
+</Tabs>
+
+## Validation
+
+The CLI validates configuration on startup:
+
+- **Token format**: Must start with `ghp_` or `github_pat_`
+- **Token authentication**: Validates against GitHub API
+- **Repository format**: Must be `owner/repo`
+- **Repository access**: Checks write permissions
+- **Numeric values**: Must be positive numbers
+- **Email format**: Must contain `@`
+
+If validation fails, you'll see a clear error message indicating what needs to be fixed.
+
+## Security Best Practices
+
+<Warning>
+  **Never commit your `.env` file to version control!**
+</Warning>
+
+The repository includes a `.gitignore` that excludes `.env` files, but always verify:
+
+```bash
+# Check if .env is ignored
+git check-ignore .env
+# Should output: .env
+```
+
+### Token Security
+
+- Use tokens with minimal required scopes
+- Rotate tokens periodically
+- Delete unused tokens from GitHub settings
+- Never share tokens in screenshots or logs
+- Use separate tokens for main and helper accounts
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GitHub Tokens" icon="key" href="/configuration/tokens">
+    Detailed guide on creating and managing GitHub tokens
+  </Card>
+  <Card title="Initial Setup" icon="play" href="/configuration/setup">
+    Complete setup wizard walkthrough
+  </Card>
+  <Card title="Achievements" icon="trophy" href="/achievements/overview">
+    Learn about available achievements
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/guides/troubleshooting">
+    Common configuration issues and solutions
+  </Card>
+</CardGroup>

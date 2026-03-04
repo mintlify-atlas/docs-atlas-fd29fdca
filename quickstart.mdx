@@ -1,80 +1,261 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get up and running with GitHub Achievement CLI in under 5 minutes. Clone, configure, and earn your first achievement badge.
 ---
 
-## Get started in three steps
+Get your first GitHub achievement in under 5 minutes. This guide walks you through installation, setup, and running your first achievement.
 
-Get your documentation site running locally and make your first customization.
+## Installation
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Clone the repository">
+    Clone the GitHub Achievement CLI to your local machine:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+    ```bash
+    git clone https://github.com/n0/GitHub-Achievement-CLI.git
+    cd GitHub-Achievement-CLI
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install the required Node.js packages:
+
+    ```bash
+    npm install
+    ```
+
+    <Note>
+      Requires Node.js 18 or higher. Check your version with `node --version`.
+    </Note>
+  </Step>
+
+  <Step title="Build the project">
+    Compile the TypeScript code:
+
+    ```bash
+    npm run build
+    ```
+
+    This creates the `dist/` directory with compiled JavaScript files.
+  </Step>
+</Steps>
+
+## Setup Wizard
+
+Launch the interactive setup wizard on your first run:
+
+```bash
+npm start
+```
+
+The setup wizard will guide you through configuration:
+
+<Steps>
+  <Step title="GitHub Personal Access Token">
+    You'll be prompted to enter your GitHub token.
+
+    <Note>
+      Don't have a token? Follow these steps:
+      1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+      2. Click **Generate new token (classic)**
+      3. Select the `repo` scope
+      4. Copy the generated token
+    </Note>
+
+    Paste your token when prompted:
+    ```
+    Enter your GitHub Personal Access Token: ghp_xxxxxxxxxxxxxxxxxxxx
+    ```
+  </Step>
+
+  <Step title="GitHub Username">
+    Enter your GitHub username:
+    ```
+    Enter your GitHub username: your-username
+    ```
+  </Step>
+
+  <Step title="Target Repository">
+    Specify a repository you own where the tool will create branches and PRs:
+    ```
+    Enter target repository (owner/repo): your-username/your-repo
+    ```
+
+    <Warning>
+      You must own this repository. The tool needs permissions to create branches, issues, and pull requests.
+    </Warning>
+  </Step>
+</Steps>
+
+The wizard creates a `.env` file with your configuration:
+
+```env
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+```
+
+## Your First Achievement
+
+Let's earn the **Quickdraw** achievement - it's the fastest and simplest to complete.
+
+<Steps>
+  <Step title="Select 'Run Achievements'">
+    From the main menu, use arrow keys to navigate and select **Run Achievements**:
+
+    ```
+    ┌─────────────────────────────────────┐
+    │  GitHub Achievement CLI             │
+    ├─────────────────────────────────────┤
+    │  ❯ Run Achievements                 │
+    │    View Status                      │
+    │    List Achievements                │
+    │    Reset Repo History               │
+    │    Reconfigure                      │
+    │    Exit                             │
+    └─────────────────────────────────────┘
+    ```
+  </Step>
+
+  <Step title="Choose Quickdraw">
+    Select **Quickdraw** from the achievements list:
+
+    ```
+    Select an achievement:
+    ❯ 🤠 Quickdraw
+      🎲 YOLO
+      👥 Pair Extraordinaire
+      🦈 Pull Shark
+      🧠 Galaxy Brain
+    ```
+
+    <Info>
+      Quickdraw only has one tier and takes about 2 seconds to complete. Perfect for testing!
+    </Info>
+  </Step>
+
+  <Step title="Confirm and Run">
+    Since Quickdraw has only one tier, it runs immediately. You'll see:
+
+    ```
+    Running Quickdraw achievement...
+    ✓ Opening issue
+    ✓ Closing issue immediately
+    ✓ Quickdraw achievement complete!
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    Achievement earned in 2 seconds
+    ```
+  </Step>
+</Steps>
 
-### Step 2: Deploy your changes
+## What Happens After Running
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+When you run Quickdraw, the tool:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+1. **Creates an issue** in your target repository
+2. **Immediately closes it** (within milliseconds)
+3. **Triggers the achievement** on your GitHub profile
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  GitHub may take a few minutes to display the achievement badge on your profile. Check your profile at `github.com/your-username` to see the Quickdraw badge appear.
 </Note>
+
+### Verify Your Achievement
+
+Check your GitHub profile to see the new badge:
+
+<CodeGroup>
+```bash Terminal
+# Open your profile in the browser
+open https://github.com/your-username
+```
+
+```bash Alternative
+# Or view via CLI (if you have gh installed)
+gh api users/your-username | jq '.achievements'
+```
+</CodeGroup>
+
+The closed issue remains in your repository's issue history. Since Quickdraw only creates one issue, cleanup is minimal.
+
+## Next Steps
+
+Now that you've earned your first achievement, explore more:
+
+<CardGroup cols={2}>
+  <Card title="Run More Achievements" icon="trophy" href="/guides/running-achievements">
+    Learn how to run multi-tier achievements like Pull Shark and Pair Extraordinaire
+  </Card>
+
+  <Card title="Track Your Progress" icon="chart-line" href="/guides/tracking-progress">
+    View status and monitor progress for achievements in progress
+  </Card>
+
+  <Card title="Set Up Helper Account" icon="users" href="/guides/helper-account">
+    Configure a second account to unlock Galaxy Brain and YOLO achievements
+  </Card>
+
+  <Card title="Clean Up After Completion" icon="broom" href="/guides/cleanup">
+    Use Reset Repo History to squash commits and keep your repository clean
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Build fails with TypeScript errors" icon="triangle-exclamation">
+    Ensure you're using Node.js 18 or higher:
+    ```bash
+    node --version
+    ```
+
+    If needed, update Node.js or use a version manager like [nvm](https://github.com/nvm-sh/nvm):
+    ```bash
+    nvm install 18
+    nvm use 18
+    ```
+  </Accordion>
+
+  <Accordion title="Authentication failed" icon="key">
+    Verify your token has the `repo` scope:
+    1. Visit [github.com/settings/tokens](https://github.com/settings/tokens)
+    2. Click on your token
+    3. Ensure `repo` is checked
+    4. Generate a new token if needed and reconfigure:
+    ```bash
+    npm start
+    # Select "Reconfigure"
+    ```
+  </Accordion>
+
+  <Accordion title="Repository not found or access denied" icon="lock">
+    Confirm:
+    - You own the repository (not just have write access)
+    - The repository name format is `owner/repo`
+    - The repository exists and is not archived
+
+    Update your configuration if needed:
+    ```bash
+    npm start
+    # Select "Reconfigure"
+    ```
+  </Accordion>
+
+  <Accordion title="Achievement badge doesn't appear immediately" icon="clock">
+    GitHub achievements may take a few minutes to appear on your profile. Wait 5-10 minutes and refresh your profile page.
+
+    If it still doesn't appear, verify:
+    - The issue was created and closed in your repository
+    - Your GitHub profile has achievements enabled (they're public by default)
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Need more help? Check the [Troubleshooting guide](/guides/troubleshooting) for detailed solutions to common problems.
+</Warning>
+
+## Ready for More?
+
+<Card title="View All Achievements" icon="list" href="/achievements/overview">
+  Explore all 5 achievements and their tiers. Learn which ones require helper accounts and how long each takes to complete.
+</Card>

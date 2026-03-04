@@ -1,0 +1,233 @@
+---
+title: Running Achievements
+description: Learn how to select and execute GitHub achievements using the interactive menu system
+---
+
+The GitHub Achievement CLI provides an interactive menu system for running achievements. This guide walks you through the entire process from selection to completion.
+
+## Starting the CLI
+
+Run the CLI using npm:
+
+```bash
+npm start
+```
+
+You'll see the main menu showing your current configuration:
+
+- **Logged in as**: Your GitHub username
+- **Target**: The repository where achievements will be executed
+- **Helper account**: Whether a helper account is configured (required for Galaxy Brain and YOLO)
+
+## Selecting Achievements
+
+<Steps>
+  <Step title="Choose 'Run Achievements'">
+    From the main menu, select **Run Achievements** and press Enter.
+  </Step>
+
+  <Step title="Pick an Achievement">
+    Browse the list of available achievements:
+    
+    - **Pair Extraordinaire** - Coauthored commits on merged PRs
+    - **Pull Shark** - Merged pull requests
+    - **Galaxy Brain** - Accepted answers in Discussions (requires helper)
+    - **Quickdraw** - Close issue within 5 minutes
+    - **YOLO** - Merge PR without code review (requires helper)
+    
+    Use ↑/↓ arrow keys to navigate and press Enter to select.
+  </Step>
+
+  <Step title="Select a Tier">
+    Choose the tier level you want to unlock:
+    
+    | Achievement | Tier Options |
+    |-------------|-------------|
+    | Pair Extraordinaire | 1, 10, 24, 48 |
+    | Pull Shark | 2, 16, 128, 1024 |
+    | Galaxy Brain | 2, 8, 16, 32 |
+    | Quickdraw | 1 |
+    | YOLO | 1 |
+    
+    The number represents how many operations will be executed.
+  </Step>
+
+  <Step title="Confirm and Execute">
+    Review your selections and confirm. The CLI will begin executing operations immediately.
+  </Step>
+</Steps>
+
+<Tip>
+  You can select multiple achievements to run in parallel. The CLI will manage concurrency and rate limiting automatically.
+</Tip>
+
+## What Happens During Execution
+
+Once you start execution, the CLI displays real-time progress for each achievement:
+
+### Progress Indicators
+
+- **● Running** - Operation currently in progress (blue dot)
+- **✓ Completed** - Operation finished successfully (green checkmark)
+- **✗ Failed** - Operation encountered an error (red X)
+- **• Pending** - Operation waiting to start (gray bullet)
+
+### Real-Time Information
+
+For each running achievement, you'll see:
+
+```
+● 🎖️ Pair Extraordinaire (Bronze)
+  [████████████░░░░░░░░░░░] 60%
+  Creating PR with coauthored commits...
+```
+
+1. **Achievement name and tier** - What's currently running
+2. **Progress bar** - Visual representation of completion percentage
+3. **Current operation** - What the CLI is doing right now (e.g., "Creating branch", "Merging PR")
+
+### Execution Flow
+
+Each achievement follows a specific workflow:
+
+<Accordion title="Pair Extraordinaire & Pull Shark">
+  1. Create a temporary branch (e.g., `pair-extraordinaire-1`)
+  2. Make commits to the branch (with coauthor for Pair Extraordinaire)
+  3. Open a pull request
+  4. Merge the pull request
+  5. Delete the temporary branch
+  6. Repeat for the target count
+</Accordion>
+
+<Accordion title="Galaxy Brain">
+  1. Create a discussion in the target repository
+  2. Helper account posts a question
+  3. Your account posts an answer
+  4. Helper account marks your answer as accepted
+  5. Repeat for the target count
+</Accordion>
+
+<Accordion title="Quickdraw">
+  1. Open a new issue
+  2. Immediately close the issue (within 5 minutes)
+  3. Achievement unlocked!
+</Accordion>
+
+<Accordion title="YOLO">
+  1. Create a branch with commits
+  2. Open a pull request
+  3. Merge immediately without waiting for reviews
+  4. Achievement unlocked!
+</Accordion>
+
+## Monitoring Progress
+
+### Overall Progress
+
+At the bottom of the screen, you'll see aggregate statistics:
+
+```
+Progress: 15/48 operations
+```
+
+This shows the total number of completed operations across all running achievements.
+
+### Elapsed Time
+
+The header displays elapsed time since execution started:
+
+```
+Executing | 2m 34s elapsed
+```
+
+### Concurrent Execution
+
+The CLI runs multiple operations concurrently (default: 2) while respecting GitHub's rate limits:
+
+- **Max concurrent operations**: 2 (configurable)
+- **Operations per minute**: 15 (stays under GitHub's 80 API calls/min limit)
+- **Automatic retry**: Failed operations retry with exponential backoff
+
+<Note>
+  Each operation makes approximately 5 API calls. The CLI automatically manages rate limiting to prevent hitting GitHub's API limits.
+</Note>
+
+## Understanding the Output
+
+### Success Messages
+
+When an achievement completes successfully:
+
+```
+✓ 🎖️ Pair Extraordinaire (Bronze)
+  [████████████████████████] 100%
+```
+
+### Error Messages
+
+If an operation fails, you'll see the error details:
+
+```
+✗ 🎖️ Pair Extraordinaire (Bronze)
+  [████████████░░░░░░░░░░░] 60%
+  GitHub API error (403): Rate limit exceeded
+```
+
+Common errors include:
+- Rate limit exceeded
+- Authentication failures
+- Network timeouts
+- Insufficient permissions
+
+See the [Troubleshooting guide](/guides/troubleshooting) for solutions.
+
+## After Completion
+
+Once all operations complete, you'll see a summary:
+
+```
+Results:
+✓ 2 succeeded
+✗ 1 failed
+
+Press Enter to continue, Esc to go back
+```
+
+### Next Steps
+
+<Steps>
+  <Step title="Check your GitHub profile">
+    Visit `github.com/your-username` to see your new achievement badges!
+  </Step>
+
+  <Step title="View detailed status">
+    Use **View Status** from the main menu to see progress on all achievements.
+  </Step>
+
+  <Step title="Run more achievements">
+    Return to **Run Achievements** to unlock additional tiers or other achievements.
+  </Step>
+
+  <Step title="Clean up your repository">
+    Use **Reset Repo History** to squash all commits into a single clean commit. See the [Cleanup guide](/guides/cleanup) for details.
+  </Step>
+</Steps>
+
+<Warning>
+  Achievements may take a few minutes to appear on your GitHub profile after completion. GitHub's achievement system updates periodically, not instantly.
+</Warning>
+
+## Interrupting Execution
+
+You can safely interrupt execution at any time:
+
+- Press **Ctrl+C** to stop the CLI
+- Progress is automatically saved to the database
+- Resume from where you left off by running `npm start` again and selecting **View Status**
+
+The CLI tracks each operation's state:
+- **Completed** operations won't be re-run
+- **In-progress** operations will be reset to pending on next run
+- **Pending** operations will be executed when you continue
+
+See the [Tracking Progress guide](/guides/tracking-progress) for details on the resume capability.

@@ -1,0 +1,159 @@
+---
+title: Pair Extraordinaire
+description: Earn the Pair Extraordinaire achievement by creating coauthored commits on merged pull requests
+---
+
+The **Pair Extraordinaire** achievement is earned by creating commits with coauthors that get merged via pull requests.
+
+## Achievement Details
+
+| Property | Value |
+|----------|-------|
+| **Achievement ID** | `pair-extraordinaire` |
+| **Icon** | 👥 |
+| **Description** | Coauthored commits on merged pull requests |
+| **Helper Account** | Not required |
+
+## Tiers
+
+<CardGroup cols={2}>
+  <Card title="Default Tier" icon="trophy">
+    **1** coauthored commit on merged PR
+  </Card>
+  <Card title="Bronze Tier" icon="medal">
+    **10** coauthored commits on merged PRs
+  </Card>
+  <Card title="Silver Tier" icon="medal">
+    **24** coauthored commits on merged PRs
+  </Card>
+  <Card title="Gold Tier" icon="medal">
+    **48** coauthored commits on merged PRs
+  </Card>
+</CardGroup>
+
+## How It Works
+
+The automation creates coauthored commits using the `Co-authored-by` trailer in commit messages:
+
+1. **Creates a branch** - Temporary branch like `achievements-pair-1`
+2. **Makes coauthored commit** - Includes coauthor in commit message
+3. **Opens pull request** - Creates PR from branch to main
+4. **Merges PR** - Uses squash merge to combine commits
+5. **Cleans up** - Deletes the temporary branch
+
+<Info>
+  Each operation creates one merged PR with a coauthored commit, incrementing your achievement count.
+</Info>
+
+## Configuration
+
+You need to configure a coauthor in your `.env` file:
+
+```env
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_USERNAME=your-username
+TARGET_REPO=your-username/your-repo
+
+# Coauthor details (can be any name/email)
+COAUTHOR_NAME=Pair Partner
+COAUTHOR_EMAIL=partner@example.com
+```
+
+<Note>
+  The coauthor email doesn't need to be a real GitHub account. GitHub recognizes the coauthor pattern regardless.
+</Note>
+
+## Implementation Details
+
+From `src/achievements/pairExtraordinaire.ts:62-71`:
+
+```typescript
+const commit = await createAchievementCommit(this.owner, this.repo, {
+  branch: branchName,
+  achievementName: 'Pair Extraordinaire',
+  number,
+  tier: this.tier,
+  coauthor: {
+    name: this.config.coauthorName,
+    email: this.config.coauthorEmail,
+  },
+});
+```
+
+The PR creation and merge (from `src/achievements/pairExtraordinaire.ts:74-88`):
+
+```typescript
+const pr = await createAndMergePR(this.owner, this.repo, {
+  title: `Achievement: Pair Extraordinaire #${number}`,
+  body: `## Pair Extraordinaire Achievement
+
+This PR was created as part of the Pair Extraordinaire achievement (${this.tier} tier).
+
+**Coauthored with:** ${this.config.coauthorName} <${this.config.coauthorEmail}>
+
+---
+*Created by GitHub Achievements Manager*`,
+  head: branchName,
+  base: this.defaultBranch,
+  mergeMethod: 'squash',
+  delayBeforeMerge: 500,
+});
+```
+
+## Workflow Example
+
+Here's what happens when you run Pair Extraordinaire for Bronze tier (10 commits):
+
+```
+✓ Create branch achievements-pair-1
+✓ Commit with coauthor to ACHIEVEMENTS.md
+✓ Open PR #1: "Achievement: Pair Extraordinaire #1"
+✓ Merge PR #1 (squash)
+✓ Delete branch achievements-pair-1
+
+[Repeats 9 more times for total of 10]
+```
+
+<Warning>
+  This creates 10 merged PRs in your repository. Use the "Reset Repo History" feature after completion to clean up.
+</Warning>
+
+## Branch Cleanup
+
+The achievement class includes automatic cleanup for orphaned branches:
+
+```typescript
+async cleanup(): Promise<void> {
+  const { deleteAllBranchesWithPrefix } = await import('../github/branch.js');
+  const prefix = `${this.config.branchPrefix}-pair`;
+  
+  const deleted = await deleteAllBranchesWithPrefix(this.owner, this.repo, prefix);
+  if (deleted > 0) {
+    logger.info(`Cleaned up ${deleted} orphaned branches`);
+  }
+}
+```
+
+## Estimated Time
+
+From the achievement definition in `src/achievements/index.ts:26`:
+
+- **Estimated time per unit**: 3000ms (3 seconds)
+- **Bronze tier (10)**: ~30 seconds
+- **Silver tier (24)**: ~72 seconds
+- **Gold tier (48)**: ~144 seconds
+
+<Info>
+  Actual time may vary based on GitHub API response times and rate limiting.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pull Shark" icon="code-pull-request" href="/achievements/pull-shark">
+    Another PR-based achievement without coauthor requirement
+  </Card>
+  <Card title="Usage Guide" icon="rocket" href="/guides/running-achievements">
+    Learn how to run achievements
+  </Card>
+</CardGroup>

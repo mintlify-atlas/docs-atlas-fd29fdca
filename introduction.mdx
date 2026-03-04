@@ -1,0 +1,152 @@
+---
+title: Introduction
+description: Automate GitHub profile achievements with an elegant CLI tool. Earn Pair Extraordinaire, Pull Shark, Galaxy Brain, Quickdraw, and YOLO badges through automated workflows.
+---
+
+# GitHub Achievement CLI
+
+Automate GitHub profile achievements with style. This beautiful command-line interface helps you unlock achievement badges on your GitHub profile through automated workflows.
+
+<CardGroup cols={2}>
+  <Card title="Interactive CLI" icon="terminal">
+    Beautiful terminal interface built with React and Ink. Navigate menus, select achievements, and track progress in real-time.
+  </Card>
+  
+  <Card title="Smart Rate Limiting" icon="gauge">
+    Respects GitHub's API limits with 2 concurrent operations, 15 ops/min, and automatic retry with exponential backoff.
+  </Card>
+  
+  <Card title="Progress Tracking" icon="chart-line">
+    Local database tracks your achievement progress per account. View status and resume interrupted runs.
+  </Card>
+  
+  <Card title="Clean Workflows" icon="broom">
+    Creates temporary branches, commits, and PRs. Built-in repo history reset squashes everything to a single commit when done.
+  </Card>
+</CardGroup>
+
+## Supported Achievements
+
+Unlock 5 GitHub achievements with tiered progression:
+
+<AccordionGroup>
+  <Accordion title="👥 Pair Extraordinaire" icon="users">
+    Coauthored commits on merged pull requests.
+    
+    **Tiers:**
+    - Default: 1 coauthored commit
+    - Bronze: 10 coauthored commits
+    - Silver: 24 coauthored commits
+    - Gold: 48 coauthored commits
+    
+    **How it works:** Creates commits with `Co-authored-by` trailers, opens PRs, and merges them to trigger the achievement.
+  </Accordion>
+  
+  <Accordion title="🦈 Pull Shark" icon="code-pull-request">
+    Opened pull requests that have been merged.
+    
+    **Tiers:**
+    - Default: 2 merged PRs
+    - Bronze: 16 merged PRs
+    - Silver: 128 merged PRs
+    - Gold: 1024 merged PRs
+    
+    **How it works:** Creates branches, commits changes, opens PRs, and auto-merges them.
+  </Accordion>
+  
+  <Accordion title="🧠 Galaxy Brain" icon="brain">
+    Answered discussions with accepted answers.
+    
+    **Tiers:**
+    - Default: 2 accepted answers
+    - Bronze: 8 accepted answers
+    - Silver: 16 accepted answers
+    - Gold: 32 accepted answers
+    
+    **Requirements:** Requires a helper account to create discussions and mark answers as accepted. Repository must have Discussions enabled.
+  </Accordion>
+  
+  <Accordion title="🤠 Quickdraw" icon="clock">
+    Closed an issue within 5 minutes of opening it.
+    
+    **Tier:** Single tier (1 quick close)
+    
+    **How it works:** Opens an issue and immediately closes it to trigger the achievement.
+  </Accordion>
+  
+  <Accordion title="🎲 YOLO" icon="dice">
+    Merged a pull request without code review.
+    
+    **Tier:** Single tier (1 unreviewed merge)
+    
+    **Requirements:** Requires a helper account to create the PR (you merge it without review).
+  </Accordion>
+</AccordionGroup>
+
+## How It Works
+
+The CLI executes achievement-specific workflows:
+
+<Steps>
+  <Step title="Select Achievements">
+    Choose which achievements and tiers you want to unlock from the interactive menu.
+  </Step>
+  
+  <Step title="Automated Execution">
+    The tool creates temporary branches in your target repository, makes commits, opens PRs, and performs the actions needed to trigger achievements.
+  </Step>
+  
+  <Step title="Progress Tracking">
+    All progress is tracked locally. View status, see completion percentages, and resume if interrupted.
+  </Step>
+  
+  <Step title="Cleanup">
+    Use the built-in Reset Repo History feature to squash all commits to a single commit, keeping your repository clean.
+  </Step>
+</Steps>
+
+<Note>
+  The tool operates on a repository you own. All actions are automated but follow GitHub's official achievement criteria.
+</Note>
+
+## Key Features
+
+- **Beautiful Terminal UI**: Built with React and Ink for a modern CLI experience
+- **Setup Wizard**: First-run wizard guides you through token creation and configuration
+- **Multi-language Support**: English and other languages supported
+- **Rate Limit Handling**: Automatic retry with backoff, respects GitHub API limits
+- **Progress Persistence**: SQLite database tracks progress per user account
+- **Concurrent Execution**: Runs 2 operations in parallel for faster completion
+- **Error Recovery**: Graceful error handling with detailed logging
+
+## Requirements
+
+<CardGroup cols={3}>
+  <Card title="Node.js 18+" icon="node-js">
+    Required runtime environment
+  </Card>
+  
+  <Card title="GitHub Token" icon="key">
+    Personal Access Token with `repo` scope
+  </Card>
+  
+  <Card title="Your Repository" icon="github">
+    A repository you own for creating branches/PRs
+  </Card>
+</CardGroup>
+
+<Warning>
+  Galaxy Brain and YOLO achievements require a second GitHub account (helper account) with its own token.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in under 5 minutes
+  </Card>
+  
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed installation and setup instructions
+  </Card>
+</CardGroup>
