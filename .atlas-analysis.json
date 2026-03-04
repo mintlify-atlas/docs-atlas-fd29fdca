@@ -1,0 +1,98 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "GitHub Achievement CLI",
+  "projectDescription": "Automate earning GitHub profile achievements like Pair Extraordinaire, Pull Shark, Galaxy Brain, Quickdraw, and YOLO through intelligent workflows.",
+  "theme": "aspen",
+  "primaryColor": "#238636",
+  "lightColor": "#2ea043",
+  "darkColor": "#1a7f37",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/setup",
+              "configuration/environment-variables",
+              "configuration/tokens"
+            ]
+          },
+          {
+            "group": "Achievements",
+            "pages": [
+              "achievements/overview",
+              "achievements/pair-extraordinaire",
+              "achievements/pull-shark",
+              "achievements/galaxy-brain",
+              "achievements/quickdraw",
+              "achievements/yolo"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/running-achievements",
+              "guides/tracking-progress",
+              "guides/helper-account",
+              "guides/cleanup",
+              "guides/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/overview",
+              "cli/interactive-menu",
+              "cli/configuration"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "cli/rate-limits",
+              "cli/concurrency",
+              "cli/internationalization"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated GitHub achievement unlocking for 5 different badges",
+    "Multi-tier support (Default, Bronze, Silver, Gold) for progressive achievements",
+    "Interactive TUI with multi-language support (16 languages)",
+    "Smart concurrency and rate limiting to respect GitHub API limits",
+    "Progress tracking with SQLite database and resume capability",
+    "Helper account support for Galaxy Brain and YOLO achievements",
+    "Repository cleanup tools to remove achievement artifacts"
+  ],
+  "publicApiSurface": [
+    "github-achievement (CLI entry point)",
+    "PairExtraordinaireAchievement",
+    "PullSharkAchievement",
+    "GalaxyBrainAchievement",
+    "QuickdrawAchievement",
+    "YOLOAchievement",
+    "Interactive Menu: Run Achievements",
+    "Interactive Menu: View Status",
+    "Interactive Menu: List Achievements",
+    "Interactive Menu: Reset Repo History",
+    "Interactive Menu: Reconfigure"
+  ]
+}
